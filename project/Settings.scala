@@ -30,9 +30,9 @@ object Settings extends Build {
 
   lazy val defaultSettings = testSettings ++ Seq(
     autoCompilerPlugins := true,
-    libraryDependencies <+= scalaVersion { v => compilerPlugin("org.brianmckenna" %% "wartremover" % Versions.WartremoverVer) },
+    //libraryDependencies <+= scalaVersion { v => compilerPlugin("org.brianmckenna" %% "wartremover" % Versions.WartremoverVer) },
     scalacOptions       ++= scalacSettings,
-    scalacOptions       += "-P:wartremover:traverser:org.brianmckenna.wartremover.warts.Unsafe",
+    //scalacOptions       += "-P:wartremover:traverser:org.brianmckenna.wartremover.warts.Unsafe",
     javacOptions        in Compile    ++= javacSettings,
     ivyLoggingLevel     in ThisBuild  := UpdateLogging.Quiet,
     parallelExecution   in ThisBuild  := false,
