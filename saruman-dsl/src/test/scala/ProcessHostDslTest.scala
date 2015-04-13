@@ -32,12 +32,32 @@ class ProcessHostDslTest extends Properties("ProcessHostDsl") {
     //tld <- Gen.oneOf("com", "net", "org", "de", "eu", "am", "la", "ua", "club")
   } yield ids.mkString(".")
 
+  val generateHostWithRange: Gen[(String, Range)] = for {
+    rangeMin <- Gen.choose(0, 10)
+    rangeMax <- Gen.choose(11, 15)
+    range = rangeMin to rangeMax
+    host <- genSimpleHostPart
+  } yield (host, range)
+
   property("For all valid simple host name part generates a valid ProcessHost with specified name") = forAll(genSimpleHostPart) { hostPart =>
-    val host = h"$hostPart"
+    val host = hostPart.h
 
     host match {
-      case v @ ValidProcessHost(parts) => v.name == hostPart
-      case InvalidProcessHost(_) => true
+      case v @ ValidProcessHost(_) => v.name == hostPart
+      case InvalidProcessHost(_, _) => true
+    }
+  }
+
+  property("Using ranges generates valid sequence of all hosts") = forAll(generateHostWithRange) { h =>
+    val host = h._1.h
+
+    host match {
+      case v @ ValidProcessHost(parts) =>
+        val hosts = v | h._2
+
+        h._2.forall(i => hosts.hosts.exists(host => host.name.endsWith(i.toString))) && v.name == h._1
+
+      case InvalidProcessHost(_, _) => true
     }
   }
 }

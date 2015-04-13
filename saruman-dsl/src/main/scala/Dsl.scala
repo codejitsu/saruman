@@ -6,27 +6,36 @@ package net.codejitsu.saruman.dsl
  * DSL for saruman scripting.
  */
 object Dsl {
-  implicit class ProcessHostForStringContext(val ctx: StringContext) {
-    def h(values: Any*): ProcessHost = {
+  implicit class ProcessHostForStringContext(val ctx: String) {
+    def h: ProcessHost = {
       val parts = for {
-        v <- values
-        parts = v.toString
-        part <- parts.split('.')
+        part <- ctx.split('.')
       } yield part
 
-      val allPartsValid = parts.forall(isPartValid)
+      val allPartsValid = isInputValid(parts)
 
       if (allPartsValid) {
-        ValidProcessHost(values.map(_.toString): _*)
+        ValidProcessHost(parts.toList)
       } else {
         val firstInvalid = for {
           part <- parts
           if !isPartValid(part)
         } yield part
 
-        new InvalidProcessHost(firstInvalid.headOption.getOrElse(""))
+        InvalidProcessHost(firstInvalid.headOption.getOrElse(""), ctx)
       }
     }
+
+    def | (r: Range): ProcessHostGroup = {
+      val host = ctx h
+
+      host | r
+    }
+
+    private def isInputValid(input: Array[String]): Boolean =
+      ctx.trim.length > 0 &&
+      ctx.last.isLetterOrDigit &&
+      !input.isEmpty && input.forall(isPartValid)
 
     private def isPartValid(value: String): Boolean = {
       val res = Option(value).isDefined &&
