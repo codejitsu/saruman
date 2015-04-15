@@ -25,13 +25,13 @@ object Dsl {
         InvalidProcessHost(firstInvalid.headOption.getOrElse(""), ctx)
       }
     }
-
+/*
     def | (r: Range): ProcessHostGroup = {
       val host = ctx h
 
       host | r
     }
-
+*/
     private def isInputValid(input: Array[String]): Boolean =
       ctx.trim.length > 0 &&
       ctx.last.isLetterOrDigit &&
@@ -43,6 +43,46 @@ object Dsl {
         value.trim.forall(ch => ch.isDigit || ('a' to 'z').contains(ch.toLower))
 
       res
+    }
+  }
+
+  implicit class HostStringOps(val ctx: String) {
+    def ~ (part: String): Host = Host(List(HostPart(ctx), HostPart(part)))
+  }
+
+  implicit class HostRangeOps[T](val ctx: IndexedSeq[T]) {
+    def ~ (part: String): Hosts = {
+      val mapped: collection.immutable.Seq[Host] =
+        ctx.map(p => Host(List(HostPart(p.toString), HostPart(part)))).toVector
+      Hosts(mapped)
+    }
+
+    def ~[P](parts: IndexedSeq[P]): Hosts = {
+      ???
+    }
+
+    def ~(parts: Product): Hosts = {
+      ???
+    }
+  }
+
+  implicit class HostProductOps(val ctx: Product) {
+    def ~ (part: String): Hosts = {
+      val vals = for {
+        i <- 0 until ctx.productArity
+      } yield ctx.productElement(i).toString
+
+      val mapped: collection.immutable.Seq[Host] =
+        vals.map(p => Host(List(HostPart(p), HostPart(part)))).toVector
+      Hosts(mapped)
+    }
+
+    def ~ (parts: Product): Hosts = {
+      ???
+    }
+
+    def ~[T](parts: IndexedSeq[T]): Hosts = {
+      ???
     }
   }
 }
