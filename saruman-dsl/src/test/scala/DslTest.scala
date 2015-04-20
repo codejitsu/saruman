@@ -93,8 +93,8 @@ class DslTest extends FlatSpec with Matchers {
 
     val all = hosts.hosts map (_.toString())
 
-    all should be (List("1.a.system.1.my.test.host", "2.a.system.1.my.test.host", "3.a.system.1.my.test.host",
-      "1.b.system.1.my.test.host", "2.b.system.1.my.test.host", "3.b.system.1.my.test.host"))
+    all should be (List("1.a.system.1.my.test.host", "1.b.system.1.my.test.host", "2.a.system.1.my.test.host",
+      "2.b.system.1.my.test.host", "3.a.system.1.my.test.host", "3.b.system.1.my.test.host"))
   }
 
   it should "allow to compose ranges and tuples with ~" in {
@@ -102,8 +102,8 @@ class DslTest extends FlatSpec with Matchers {
 
     val all = hosts.hosts map (_.toString())
 
-    all should be (List("1.a.system.1.my.test.host", "2.a.system.1.my.test.host", "3.a.system.1.my.test.host",
-      "1.b.system.1.my.test.host", "2.b.system.1.my.test.host", "3.b.system.1.my.test.host"))
+    all should be (List("1.a.system.1.my.test.host", "1.b.system.1.my.test.host", "2.a.system.1.my.test.host",
+      "2.b.system.1.my.test.host", "3.a.system.1.my.test.host", "3.b.system.1.my.test.host"))
   }
 
   it should "allow to compose tuples and ranges with ~" in {
@@ -111,8 +111,8 @@ class DslTest extends FlatSpec with Matchers {
 
     val all = hosts.hosts map (_.toString())
 
-    all should be (List("1.a.system.1.my.test.host", "2.a.system.1.my.test.host", "3.a.system.1.my.test.host",
-      "1.b.system.1.my.test.host", "2.b.system.1.my.test.host", "3.b.system.1.my.test.host"))
+    all should be (List("1.a.system.1.my.test.host", "1.b.system.1.my.test.host", "2.a.system.1.my.test.host",
+      "2.b.system.1.my.test.host", "3.a.system.1.my.test.host", "3.b.system.1.my.test.host"))
   }
 
   it should "allow to compose strings and tuples with ~" in {
@@ -128,8 +128,8 @@ class DslTest extends FlatSpec with Matchers {
 
     val all = hosts.hosts map (_.toString())
 
-    all should be (List("my.test.host.abc.one.system.1", "my.test.host.100.one.system.1", "my.test.host.z.one.system.1",
-      "my.test.host.abc.two.system.1", "my.test.host.100.two.system.1", "my.test.host.z.two.system.1"))
+    all.sorted should be (List("my.test.host.abc.one.system.1", "my.test.host.abc.two.system.1", "my.test.host.100.one.system.1",
+      "my.test.host.100.two.system.1", "my.test.host.z.one.system.1", "my.test.host.z.two.system.1").sorted)
   }
 
   it should "allow to compose tuples and strings with ~" in {

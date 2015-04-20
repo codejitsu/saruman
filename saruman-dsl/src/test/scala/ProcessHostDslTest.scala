@@ -38,7 +38,11 @@ class ProcessHostDslTest extends Properties("ProcessHostDsl") {
     range = rangeMin to rangeMax
     host <- genSimpleHostPart
   } yield (host, range)
-
+/*
+  val genTuple: Gen[Product] = for {
+    size <- Gen.choose(1, 22)
+  }
+*/
   property("For all valid simple host name part generates a valid ProcessHost with specified name") = forAll(genSimpleHostPart) { hostPart =>
     val host = hostPart.h
 
@@ -60,4 +64,9 @@ class ProcessHostDslTest extends Properties("ProcessHostDsl") {
       case InvalidProcessHost(_, _) => true
     }
   }
+/*
+  property("For all strings, ranges and tuples dsl will generate a valide hosts") = forAll {
+
+  }
+  */
 }

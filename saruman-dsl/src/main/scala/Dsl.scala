@@ -58,11 +58,20 @@ object Dsl {
     }
 
     def ~[P](parts: IndexedSeq[P]): Hosts = {
-      ???
+      val all = for {
+        x <- ctx
+        y <- parts
+      } yield Host(List(HostPart(x.toString), HostPart(y.toString)))
+
+      Hosts(all.toList)
     }
 
     def ~(parts: Product): Hosts = {
-      ???
+      val flatProduct = for {
+        i <- 0 until parts.productArity
+      } yield parts.productElement(i).toString
+
+      this ~ flatProduct
     }
   }
 
@@ -77,12 +86,17 @@ object Dsl {
       Hosts(mapped)
     }
 
-    def ~ (parts: Product): Hosts = {
-      ???
-    }
-
     def ~[T](parts: IndexedSeq[T]): Hosts = {
-      ???
+      val vals = for {
+        i <- 0 until ctx.productArity
+      } yield ctx.productElement(i).toString
+
+      val all = for {
+        x <- vals
+        y <- parts
+      } yield Host(List(HostPart(x.toString), HostPart(y.toString)))
+
+      Hosts(all.toList)
     }
   }
 }

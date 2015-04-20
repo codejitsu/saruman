@@ -11,4 +11,16 @@ case class Hosts(hosts: collection.immutable.Seq[Host]) {
 
     Hosts(appended)
   }
+
+  def ~ (parts: Product): Hosts = {
+    val vals = for {
+      i <- 0 until parts.productArity
+    } yield parts.productElement(i).toString
+
+    val all = vals map (v => this ~ v)
+
+    val together = all.foldLeft(collection.immutable.Seq.empty[Host])((hseq, hosts) => hosts.hosts ++ hseq)
+
+    Hosts(together)
+  }
 }
