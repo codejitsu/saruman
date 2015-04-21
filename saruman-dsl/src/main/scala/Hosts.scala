@@ -23,4 +23,13 @@ case class Hosts(hosts: collection.immutable.Seq[Host]) {
 
     Hosts(together)
   }
+
+  def ~[T](parts: IndexedSeq[T]): Hosts = {
+    val all = for {
+      x <- hosts
+      y <- parts
+    } yield Host(x.parts :+ HostPart(y.toString))
+
+    Hosts(all.toList)
+  }
 }

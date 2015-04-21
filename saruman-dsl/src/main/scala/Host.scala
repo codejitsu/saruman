@@ -27,4 +27,8 @@ case class Host(parts: collection.immutable.Seq[HostPart]) {
 
     this ~ vals
   }
+
+  def isValid: Boolean = parts.forall(_.isValid)
 }
+
+object localhost extends Host(List(HostPart("localhost")))
