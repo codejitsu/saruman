@@ -93,7 +93,7 @@ class DslTest extends FlatSpec with Matchers {
     process.name should be ("tomcat")
     process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
     process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
-    process.hosts should be (List(host))
+    process.host should be (host)
   }
 
   it should "allow to define process on simple host" in {
@@ -105,13 +105,11 @@ class DslTest extends FlatSpec with Matchers {
     process.name should be ("tomcat")
     process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
     process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
-    process.hosts should be (List(Host(List(HostPart("my.test.host")))))
+    process.host should be (Host(List(HostPart("my.test.host"))))
   }
 
-  it should "allow to define processes on multiple hosts" in {
-    val hosts: Hosts = "my" ~ "test" ~ "host" ~ (1 to 10)
-
-    val process: Processes = "tomcat" on hosts ~> {
+  it should "allow to define process on localhost" in {
+    val process: Process = "tomcat" on localhost ~> {
       case Start => Exec("/etc/init.d/tomcat", "start")
       case Stop => Exec("/etc/init.d/tomcat", "stop")
     }
@@ -119,6 +117,63 @@ class DslTest extends FlatSpec with Matchers {
     process.name should be ("tomcat")
     process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
     process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
-    process.hosts should be (hosts.toList)
+    process.host should be (localhost)
+  }
+
+  it should "allow to define processes on multiple hosts" in {
+    val hosts: Hosts = "my" ~ "test" ~ "host" ~ (1 to 10)
+
+    val tomcats: Processes = "tomcat" on hosts ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    tomcats.procs.size should be (10)
+
+    tomcats.procs.map(_.host.toString).toSet.size should be (10)
+
+    tomcats.procs.foreach { tomcat =>
+      tomcat.name should be ("tomcat")
+      tomcat.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+      tomcat.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+      tomcat.host.toString.startsWith("my.test.host") should be (true)
+    }
+  }
+
+  it should "allow to define processes on multiple hosts (simple view)" in {
+    val hosts = "my" ~ "test" ~ "host" ~ (1 to 10)
+
+    val tomcats = "tomcat" on hosts ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    tomcats.procs.size should be (10)
+
+    tomcats.procs.map(_.host.toString).toSet.size should be (10)
+
+    tomcats.procs.foreach { tomcat =>
+      tomcat.name should be ("tomcat")
+      tomcat.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+      tomcat.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+      tomcat.host.toString.startsWith("my.test.host") should be (true)
+    }
+  }
+
+  it should "allow to define tasks with processes" in {
+    val tomcat: Process = "tomcat" on localhost ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    val startTomcat: Task = tomcat ! Start
+
+    startTomcat.process should be (tomcat)
+    startTomcat.cmd should be (Start)
+
+    val stopTomcat: Task = tomcat ! Stop
+
+    stopTomcat.process should be (tomcat)
+    stopTomcat.cmd should be (Stop)
   }
 }

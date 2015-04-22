@@ -2,10 +2,21 @@
 
 package net.codejitsu.saruman.dsl
 
-sealed trait ProcessOps
+sealed trait ProcessTask {
+  def cmd: String
+}
 
-case object Start extends ProcessOps
-case object Stop extends ProcessOps
+case object Start extends ProcessTask {
+  val cmd = "start"  
+}
+
+case object Restart extends ProcessTask {
+  val cmd = "restart"
+}
+
+case object Stop extends ProcessTask {
+  val cmd = "stop"
+}
 
 sealed trait ProcessCmd {
   def path: String
@@ -21,7 +32,7 @@ case object NoExec extends ProcessCmd {
   override val args: Array[String] = Array.empty[String]
 }
 
-case class Process(name: String, hosts: collection.immutable.Seq[Host], proc: PartialFunction[ProcessOps, ProcessCmd]) {
+case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, ProcessCmd]) {
   def startCmd: ProcessCmd = {
     if (proc.isDefinedAt(Start)) proc(Start)
     else NoExec
@@ -33,5 +44,8 @@ case class Process(name: String, hosts: collection.immutable.Seq[Host], proc: Pa
   }
 }
 
-case class ProcessStep(proc: PartialFunction[ProcessOps, ProcessCmd],
-                       name: String = "", hosts: collection.immutable.Seq[Host] = Nil)
+case class ProcessStep(proc: PartialFunction[ProcessTask, ProcessCmd], host: Host)
+
+case class ProcessSteps(steps: collection.immutable.Seq[ProcessStep])
+
+case class Processes(procs: collection.immutable.Seq[Process])

@@ -9,7 +9,14 @@ object Dsl {
   implicit class HostStringOps(val ctx: String) {
     def ~ (part: String): Host = Host(List(HostPart(ctx), HostPart(part)))
 
-    def on (ps: ProcessStep): Process = Process(ctx, ps.hosts, ps.proc)
+    def on (ps: ProcessStep): Process = Process(ctx, ps.host, ps.proc)
+
+    def on (ps: ProcessSteps): Processes = {
+      val p = ps.steps map (s => ctx on s)
+      Processes(p)
+    }
+
+    def ~>(proc: PartialFunction[ProcessTask, ProcessCmd]): ProcessStep = Host(List(HostPart(ctx))) ~> proc
   }
 
   implicit class HostRangeOps[T](val ctx: IndexedSeq[T]) {
@@ -63,6 +70,23 @@ object Dsl {
   }
 
   implicit class HostOps(val ctx: Host) {
-    def ~>(proc: PartialFunction[ProcessOps, ProcessCmd]): ProcessStep = ProcessStep(proc, hosts = List(ctx))
+    def ~>(proc: PartialFunction[ProcessTask, ProcessCmd]): ProcessStep = ProcessStep(proc, host = ctx)
+  }
+
+  implicit class HostsOps(val ctx: Hosts) {
+    def ~>(proc: PartialFunction[ProcessTask, ProcessCmd]): ProcessSteps = {
+      val steps = ctx.hosts map (h => h ~> proc)
+      ProcessSteps(steps)
+    }
+  }
+
+  implicit class ProcessOps(val ctx: Process) {
+    def ! (op: ProcessTask): Task = new Task {
+      override def run: TaskResult = ???
+
+      override def process: Process = ctx
+
+      override def cmd: ProcessTask = op
+    }
   }
 }
