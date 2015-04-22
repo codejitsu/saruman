@@ -14,6 +14,10 @@ case object Stop extends ProcessTask {
   val cmd = "stop"
 }
 
+case object ComposedTask extends ProcessTask {
+  val cmd = "composed"
+}
+
 sealed trait ProcessCmd {
   def path: String
   def args: Array[String]
@@ -34,7 +38,7 @@ case object NoExec extends ProcessCmd {
   override val args: Array[String] = Array.empty[String]
 }
 
-case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, ProcessCmd]) {
+case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, ProcessCmd], verbose: Boolean = false) {
   def startCmd: ProcessCmd = {
     if (proc.isDefinedAt(Start)) {
       proc(Start)

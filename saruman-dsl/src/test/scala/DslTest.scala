@@ -194,7 +194,7 @@ class DslTest extends FlatSpec with Matchers {
     val startResult = startShell.run
 
     startResult.success should be (true)
-    startResult.out should be ("start test program")
+    startResult.out should be (List("start test program"))
 
     val stopShell: Task = program ! Stop
 
@@ -204,9 +204,33 @@ class DslTest extends FlatSpec with Matchers {
     val stopResult = stopShell.run
 
     stopResult.success should be (true)
-    stopResult.out should be ("stop test program")
+    stopResult.out should be (List("stop test program"))
   }
 
-  //TODO task1 andThen task2
+  it should "compose processes on localhost" in {
+    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
+    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+
+    val program: Process = "test" on Localhost ~> {
+      case Start => Sudo ~ Exec(procStart)
+      case Stop => Sudo ~ Exec(procStop)
+    }
+
+    val startShell: Task = program ! Start
+
+    startShell.process should be (program)
+    startShell.cmd should be (Start)
+
+    val stopShell: Task = program ! Stop
+
+    stopShell.process should be (program)
+    stopShell.cmd should be (Stop)
+
+    val composed = startShell andThen stopShell
+    val composedResult = composed.run
+
+    composedResult.success should be (true)
+    composedResult.out should be (List("start test program", "stop test program"))
+  }
   //TODO task as monad
 }

@@ -95,13 +95,15 @@ object Dsl {
       def execute(cmd: String): TaskResult = {
         import scala.sys.process._
 
-        println(s"$op '${ctx.name}' (${cmd.trim}) on '${ctx.host.toString}'")
+        if (ctx.verbose) {
+          println(s"$op '${ctx.name}' (${cmd.trim}) on '${ctx.host.toString}'")
+        }
 
         val out = ListBuffer[String]()
 
         val result = (cmd run (ProcessLogger(out append _))).exitValue
 
-        TaskResult(result == 0, out.mkString)
+        TaskResult(result == 0, out.toList)
       }
 
       override def process: Process = ctx
