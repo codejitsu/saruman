@@ -95,4 +95,30 @@ class DslTest extends FlatSpec with Matchers {
     process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
     process.hosts should be (List(host))
   }
+
+  it should "allow to define process on simple host" in {
+    val process: Process = "tomcat" on "my.test.host" ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    process.name should be ("tomcat")
+    process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+    process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+    process.hosts should be (List(Host(List(HostPart("my.test.host")))))
+  }
+
+  it should "allow to define processes on multiple hosts" in {
+    val hosts: Hosts = "my" ~ "test" ~ "host" ~ (1 to 10)
+
+    val process: Processes = "tomcat" on hosts ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    process.name should be ("tomcat")
+    process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+    process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+    process.hosts should be (hosts.toList)
+  }
 }
