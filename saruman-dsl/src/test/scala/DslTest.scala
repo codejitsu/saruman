@@ -109,7 +109,7 @@ class DslTest extends FlatSpec with Matchers {
   }
 
   it should "allow to define process on localhost" in {
-    val process: Process = "tomcat" on localhost ~> {
+    val process: Process = "tomcat" on Localhost ~> {
       case Start => Exec("/etc/init.d/tomcat", "start")
       case Stop => Exec("/etc/init.d/tomcat", "stop")
     }
@@ -117,7 +117,7 @@ class DslTest extends FlatSpec with Matchers {
     process.name should be ("tomcat")
     process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
     process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
-    process.host should be (localhost)
+    process.host should be (Localhost)
   }
 
   it should "allow to define processes on multiple hosts" in {
@@ -161,7 +161,7 @@ class DslTest extends FlatSpec with Matchers {
   }
 
   it should "allow to define tasks with processes" in {
-    val tomcat: Process = "tomcat" on localhost ~> {
+    val tomcat: Process = "tomcat" on Localhost ~> {
       case Start => Exec("/etc/init.d/tomcat", "start")
       case Stop => Exec("/etc/init.d/tomcat", "stop")
     }
@@ -176,4 +176,37 @@ class DslTest extends FlatSpec with Matchers {
     stopTomcat.process should be (tomcat)
     stopTomcat.cmd should be (Stop)
   }
+
+  it should "run processes on localhost" in {
+    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
+    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+
+    val program: Process = "test" on Localhost ~> {
+      case Start => Sudo ~ Exec(procStart)
+      case Stop => Sudo ~ Exec(procStop)
+    }
+
+    val startShell: Task = program ! Start
+
+    startShell.process should be (program)
+    startShell.cmd should be (Start)
+
+    val startResult = startShell.run
+
+    startResult.success should be (true)
+    startResult.out should be ("start test program")
+
+    val stopShell: Task = program ! Stop
+
+    stopShell.process should be (program)
+    stopShell.cmd should be (Stop)
+
+    val stopResult = stopShell.run
+
+    stopResult.success should be (true)
+    stopResult.out should be ("stop test program")
+  }
+
+  //TODO task1 andThen task2
+  //TODO task as monad
 }

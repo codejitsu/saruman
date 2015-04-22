@@ -47,7 +47,7 @@ object Settings extends Build {
     Tests.Argument(TestFrameworks.JUnit, "-oDF", "-v", "-a")
   )
 
-  lazy val testSettings = tests ++ jacoco.settings ++ ScalastylePlugin.Settings ++ Seq(
+  lazy val testSettings = tests ++ jacoco.settings ++ Seq(
     parallelExecution in Test             := false,
     parallelExecution in IntegrationTest  := false,
     testOptions       in Test             ++= testOptionSettings,

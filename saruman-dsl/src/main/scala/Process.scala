@@ -7,11 +7,7 @@ sealed trait ProcessTask {
 }
 
 case object Start extends ProcessTask {
-  val cmd = "start"  
-}
-
-case object Restart extends ProcessTask {
-  val cmd = "restart"
+  val cmd = "start"
 }
 
 case object Stop extends ProcessTask {
@@ -21,10 +17,16 @@ case object Stop extends ProcessTask {
 sealed trait ProcessCmd {
   def path: String
   def args: Array[String]
+  def cmd: String = s"$path ${args.mkString(" ")}"
 }
 
 case class Exec(path: String, params: String*) extends ProcessCmd {
   def args: Array[String] = params.toArray
+}
+
+case class SudoExec(path: String, params: String*) extends ProcessCmd {
+  def args: Array[String] = params.toArray
+  override def cmd: String = s"sudo ${super.cmd}"
 }
 
 case object NoExec extends ProcessCmd {
@@ -34,13 +36,19 @@ case object NoExec extends ProcessCmd {
 
 case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, ProcessCmd]) {
   def startCmd: ProcessCmd = {
-    if (proc.isDefinedAt(Start)) proc(Start)
-    else NoExec
+    if (proc.isDefinedAt(Start)) {
+      proc(Start)
+    } else {
+      NoExec
+    }
   }
 
   def stopCmd: ProcessCmd = {
-    if (proc.isDefinedAt(Stop)) proc(Stop)
-    else NoExec
+    if (proc.isDefinedAt(Stop)) {
+      proc(Stop)
+    } else {
+      NoExec
+    }
   }
 }
 

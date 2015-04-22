@@ -31,7 +31,7 @@ case class Host(parts: collection.immutable.Seq[HostPart]) {
   def isValid: Boolean = parts.forall(_.isValid)
 }
 
-object localhost extends Host(List(HostPart("localhost"))) {
+object Localhost extends Host(List(HostPart("localhost"))) {
   override def toString(): String = "localhost"
 
   override def ~ (part: String): Host = throw new IllegalArgumentException()

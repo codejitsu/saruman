@@ -5,7 +5,7 @@ package net.codejitsu.saruman.dsl
 /**
  * Task.
  */
-case class TaskResult()
+case class TaskResult(success: Boolean, out: String)
 
 trait Task {
   def process: Process
