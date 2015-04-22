@@ -9,7 +9,7 @@ object Dsl {
   implicit class HostStringOps(val ctx: String) {
     def ~ (part: String): Host = Host(List(HostPart(ctx), HostPart(part)))
 
-    def on (host: Host): ProcessStep = ProcessStep(List(host))
+    def on (ps: ProcessStep): Process = Process(ctx, ps.hosts, ps.proc)
   }
 
   implicit class HostRangeOps[T](val ctx: IndexedSeq[T]) {
@@ -60,5 +60,9 @@ object Dsl {
 
       Hosts(all.toList)
     }
+  }
+
+  implicit class HostOps(val ctx: Host) {
+    def ~>(proc: PartialFunction[ProcessOps, ProcessCmd]): ProcessStep = ProcessStep(proc, hosts = List(ctx))
   }
 }

@@ -85,15 +85,14 @@ class DslTest extends FlatSpec with Matchers {
   it should "allow to define process on host" in {
     val host = "my" ~ "test" ~ "host"
 
-    val p = "tomcat" on host to {
-      case Start => "/etc/init.d/tomcat start"
-      case Stop => "/etc/init.d/tomcat stop"
+    val process: Process = "tomcat" on host ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
     }
-/*
-    p.name should be ("tomcat")
-    p.startPath should be ("/etc/init.d/tomcat start")
-    p.stopPath should be ("/etc/init.d/tomcat stop")
-    p.host should be (host)
-    */
+
+    process.name should be ("tomcat")
+    process.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+    process.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+    process.hosts should be (List(host))
   }
 }
