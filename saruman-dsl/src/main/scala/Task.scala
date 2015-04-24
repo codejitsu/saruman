@@ -10,9 +10,6 @@ case class TaskResult(success: Boolean, out: List[String])
 trait Task {
   self =>
 
-  def process: Process
-  def cmd: ProcessTask
-
   def run: TaskResult
 
   def andThen(task: Task): Task = new Task {
@@ -22,9 +19,5 @@ trait Task {
 
       TaskResult(thisResult.success && taskResult.success, thisResult.out ++ taskResult.out)
     }
-
-    override def process: Process = ??? //TODO ComposedProcess
-
-    override def cmd: ProcessTask = ComposedTask
   }
 }

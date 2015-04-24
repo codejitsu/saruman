@@ -105,10 +105,6 @@ object Dsl {
 
         TaskResult(result == 0, out.toList)
       }
-
-      override def process: Process = ctx
-
-      override def cmd: ProcessTask = op
     }
   }
 
