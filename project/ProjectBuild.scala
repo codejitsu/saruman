@@ -35,6 +35,10 @@ object Dependencies {
 
   object Compile {
     val config        = "com.typesafe"             % "config"               % TypesafeConfigVer
+    val ssh           = "com.decodified"          %% "scala-ssh"            % ScalaSshVer
+    val logback       = "ch.qos.logback"           % "logback-classic"      % LogbackVer
+    val bouncy        = "org.bouncycastle"         % "bcprov-jdk16"         % "1.46"
+    val jcraft        = "com.jcraft"               % "jzlib"                % "1.1.3"
   }
 
   object Test {
@@ -51,7 +55,7 @@ object Dependencies {
 
   /** Module deps */
 
-  val sarumanDsl = Seq(config) ++ test
+  val sarumanDsl = Seq(config, ssh, logback, bouncy, jcraft) ++ test
   val sarumanCli = Seq(config) ++ test
   val sarumanApp = Seq(config) ++ test
 }

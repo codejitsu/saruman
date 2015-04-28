@@ -12,4 +12,7 @@ object Versions {
   val AbideExtraVer     = "0.1-SNAPSHOT"
 
   val WartremoverVer    = "0.10"
+
+  val ScalaSshVer       = "0.7.0"
+  val LogbackVer        = "1.1.2"
 }

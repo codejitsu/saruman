@@ -54,6 +54,8 @@ case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, 
       NoExec
     }
   }
+
+  def withStdOut: Process = copy(verbose = true)
 }
 
 case class ProcessStep(proc: PartialFunction[ProcessTask, ProcessCmd], host: Host)

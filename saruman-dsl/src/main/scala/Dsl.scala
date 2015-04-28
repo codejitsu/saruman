@@ -81,31 +81,7 @@ object Dsl {
   }
 
   implicit class ProcessOps(val ctx: Process) {
-    def ! (op: ProcessTask): Task = new Task {
-      import scala.collection.mutable.ListBuffer
-
-      override def run: TaskResult = op match {
-        case Start => execute(ctx.startCmd.cmd)
-
-        case Stop => execute(ctx.stopCmd.cmd)
-
-        case _ => ???
-      }
-
-      def execute(cmd: String): TaskResult = {
-        import scala.sys.process._
-
-        if (ctx.verbose) {
-          println(s"$op '${ctx.name}' (${cmd.trim}) on '${ctx.host.toString}'")
-        }
-
-        val out = ListBuffer[String]()
-
-        val result = (cmd run (ProcessLogger(out append _))).exitValue
-
-        TaskResult(result == 0, out.toList)
-      }
-    }
+    def ! (op: ProcessTask)(implicit user: User[String]): Task = new RunnableTask(ctx, user, op)
   }
 
   object Sudo {
