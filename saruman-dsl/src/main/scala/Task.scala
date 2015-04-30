@@ -2,10 +2,12 @@
 
 package net.codejitsu.saruman.dsl
 
+import scala.util.control.NonFatal
+
 /**
  * Task.
  */
-case class TaskResult(success: Boolean, out: List[String])
+case class TaskResult(success: Boolean, out: List[String], err: List[String])
 
 trait Task {
   self =>
@@ -17,13 +19,15 @@ trait Task {
       val thisResult = self.run
       val taskResult = task.run
 
-      TaskResult(thisResult.success && taskResult.success, thisResult.out ++ taskResult.out)
+      TaskResult(thisResult.success && taskResult.success, thisResult.out ++ taskResult.out,
+        thisResult.err ++ taskResult.err)
     }
   }
 }
 
-class RunnableTask(val ctx: Process, val user: User[String], val op: ProcessTask) extends Task {
+class RunnableTask(val ctx: Process, val user: User, val op: ProcessTask) extends Task {
   import scala.collection.mutable.ListBuffer
+  import scala.sys.process._
 
   override def run: TaskResult = op match {
     case Start => execute(ctx.startCmd.cmd)
@@ -33,50 +37,82 @@ class RunnableTask(val ctx: Process, val user: User[String], val op: ProcessTask
     case _ => ???
   }
 
-  private def executeLocal(cmd: String): TaskResult = {
-    import scala.sys.process._
+  def doOut(out: ListBuffer[String])(line: String): Unit = {
+    out.append(line)
 
-    val out = ListBuffer[String]()
-
-    def doOut(line: String): Unit = {
-      out.append(line)
-
-      if(ctx.verbose) {
-        println(line)
-      }
+    if(ctx.verbose) {
+      println(line)
     }
+  }
+
+  private def executeLocal(cmd: String): TaskResult = {
+    val out = ListBuffer[String]()
+    val err = ListBuffer[String]()
 
     if (ctx.verbose) {
       println(s"$op '${ctx.name}' (${cmd.trim}) on '${ctx.host.toString}'")
     }
 
-    val result = (cmd run (ProcessLogger(doOut _))).exitValue
+    val result = (cmd run (ProcessLogger(doOut(out)(_), doOut(err)(_)))).exitValue()
 
-    TaskResult(result == 0, out.toList)
+    TaskResult(result == 0, out.toList, err.toList)
   }
 
-  private def executeRemote(remoteHost: Host, cmd: String): TaskResult = {
-    import com.decodified.scalassh._
+  private def executeRemoteSsh(remoteHost: Host, cmd: String): TaskResult = {
+    val out = ListBuffer[String]()
+    val err = ListBuffer[String]()
 
-    val login = PublicKeyLogin(user.username)
+    def remoteCommandLine(user: User): List[String] = try {
+      user match {
+        case sshu: SshUser =>
+          val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
+          val keyFileArgs = sshu.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
 
-    val sshResult = SSH(remoteHost.toString(), login) { sshClient =>
-      try sshClient.exec(cmd).right.map { res =>
-        TaskResult(true, List(res.stdOutAsString()))
-      } finally {
-        sshClient.close()
+          "ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: s"${sshu.username}@${remoteHost.toString()}" :: s"echo '${sshu.passphrase.mkString}' | $cmd" :: Nil
+        case _ => Nil
       }
+    } catch {
+      case NonFatal(e) => Nil
     }
 
-    if (sshResult.isRight) {
-      sshResult.right.get
-    } else {
-      TaskResult(false, List(sshResult.left.get))
+    val commandLine = remoteCommandLine(user)
+
+    if (ctx.verbose) {
+      println(s"SSH: ${commandLine.mkString(" ")}")
     }
+
+    val proc = (commandLine run (ProcessLogger(doOut(out)(_), doOut(err)(_))))
+    val result = proc.exitValue
+
+    TaskResult(result == 0, out.toList, err.toList)
+  }
+
+  private def executeRemoteDirectSsh(remoteHost: Host, cmd: String): TaskResult = user match {
+    case sshu: SshUser =>
+      import com.decodified.scalassh.{SimplePasswordProducer, PublicKeyLogin, SSH}
+      import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
+
+      val out = ListBuffer[String]()
+      val err = ListBuffer[String]()
+
+      val publicKeyLogin =
+        PublicKeyLogin(user.username, SimplePasswordProducer(sshu.passphrase.mkString),
+          sshu.keyFile map (_.getPath :: Nil) getOrElse DefaultKeyLocations)
+
+      val result = SSH(remoteHost.toString(), publicKeyLogin) { ssh =>
+        ssh.exec(cmd)
+      }
+
+      result match {
+        case Left(e) => TaskResult(false, Nil, List(e))
+        case Right(b) => TaskResult(true, List(b.stdOutAsString()), List(b.stdErrAsString()))
+      }
+
+    case _ => TaskResult(false, Nil, List("Please provide ssh credentials."))
   }
 
   private def execute(cmd: String): TaskResult = ctx.host match {
     case Localhost => executeLocal(cmd)
-    case remoteHost: Host => executeRemote(remoteHost, cmd)
+    case remoteHost: Host => executeRemoteSsh(remoteHost, cmd)
   }
 }

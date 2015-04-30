@@ -2,19 +2,23 @@
 
 package net.codejitsu.saruman.dsl
 
+import java.io.File
+
 /**
  * User
  */
-trait User[+T] {
-  def username: T
+sealed trait User {
+  def username: String
 }
 
-case object NoUser extends User[Nothing] {
-  override def username: Nothing = throw new IllegalStateException("no username")
+case object NoUser extends User {
+  override def username: String = throw new IllegalStateException("no username")
 }
 
-case class Username(username: String) extends User[String]
+case class SshUser(username: String, keyFile: Option[File]) extends User with SshCredentials {
+  lazy val passphrase = System.console.readLine("Please enter your passphrase:")
+}
 
 object User {
-  implicit val DefaultUser: User[String] = NoUser
+  implicit val DefaultUser: User = NoUser
 }

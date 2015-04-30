@@ -81,7 +81,7 @@ object Dsl {
   }
 
   implicit class ProcessOps(val ctx: Process) {
-    def ! (op: ProcessTask)(implicit user: User[String]): Task = new RunnableTask(ctx, user, op)
+    def ! (op: ProcessTask)(implicit user: User): Task = new RunnableTask(ctx, user, op)
   }
 
   object Sudo {

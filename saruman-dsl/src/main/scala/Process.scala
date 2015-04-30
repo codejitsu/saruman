@@ -30,7 +30,7 @@ case class Exec(path: String, params: String*) extends ProcessCmd {
 
 case class SudoExec(path: String, params: String*) extends ProcessCmd {
   def args: Array[String] = params.toArray
-  override def cmd: String = s"sudo ${super.cmd}"
+  override def cmd: String = s"sudo -S ${super.cmd}"
 }
 
 case object NoExec extends ProcessCmd {
