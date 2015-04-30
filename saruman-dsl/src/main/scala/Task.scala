@@ -30,9 +30,9 @@ class RunnableTask(val ctx: Process, val user: User, val op: Command) extends Ta
   import scala.sys.process._
 
   override def run: TaskResult = op match {
-    case Start => execute(ctx.startCmd.cmd)
+    case Start => execute(ctx.startCmd)
 
-    case Stop => execute(ctx.stopCmd.cmd)
+    case Stop => execute(ctx.stopCmd)
 
     case _ => ???
   }
@@ -45,23 +45,31 @@ class RunnableTask(val ctx: Process, val user: User, val op: Command) extends Ta
     }
   }
 
-  private def executeLocal(cmd: String): TaskResult = user match {
+  private def executeLocal(cmd: CommandLine): TaskResult = user match {
     case lu @ LocalUser(_) =>
       val out = ListBuffer[String]()
       val err = ListBuffer[String]()
 
       if (ctx.verbose) {
-        println(s"$op '${ctx.name}' (${cmd.trim}) on '${ctx.host.toString}'")
+        println(s"$op '${ctx.name}' (${cmd.cmd}) on '${ctx.host.toString}'")
       }
 
-      val result = (s"echo '${lu.password().mkString}' | $cmd" run (ProcessLogger(doOut(out)(_), doOut(err)(_)))).exitValue()
+      val result = cmd match {
+        case SudoExec(_, _*) =>
+          (s"echo '${lu.password().mkString}' | ${cmd.cmd}" run (ProcessLogger(doOut(out)(_), doOut(err)(_)))).exitValue()
+
+        case Exec(_, _*) =>
+          (cmd.cmd run (ProcessLogger(doOut(out)(_), doOut(err)(_)))).exitValue()
+
+        case NoExec => 0
+      }
 
       TaskResult(result == 0, out.toList, err.toList)
 
     case _ => TaskResult(false, Nil, List("Please provide localhost credentials."))
   }
 
-  private def executeRemoteSsh(remoteHost: Host, cmd: String): TaskResult = {
+  private def executeRemoteSsh(remoteHost: Host, cmd: CommandLine): TaskResult = {
     val out = ListBuffer[String]()
     val err = ListBuffer[String]()
 
@@ -71,7 +79,17 @@ class RunnableTask(val ctx: Process, val user: User, val op: Command) extends Ta
           val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
           val keyFileArgs = sshu.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
 
-          "ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: s"${sshu.username}@${remoteHost.toString()}" :: s"echo '${sshu.password().mkString}' | $cmd" :: Nil
+          cmd match {
+            case SudoExec(_, _*) =>
+              "ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: s"${sshu.username}@${remoteHost.toString()}" ::
+                s"echo '${sshu.password().mkString}' | ${cmd.cmd}" :: Nil
+
+            case Exec(_, _*) =>
+              "ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: s"${sshu.username}@${remoteHost.toString()}" ::
+                cmd.cmd :: Nil
+
+            case NoExec => Nil
+          }
         case _ => Nil
       }
     } catch {
@@ -114,7 +132,7 @@ class RunnableTask(val ctx: Process, val user: User, val op: Command) extends Ta
     case _ => TaskResult(false, Nil, List("Please provide ssh credentials."))
   }
 
-  private def execute(cmd: String): TaskResult = ctx.host match {
+  private def execute(cmd: CommandLine): TaskResult = ctx.host match {
     case Localhost => executeLocal(cmd)
     case remoteHost: Host => executeRemoteSsh(remoteHost, cmd)
   }

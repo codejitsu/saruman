@@ -180,8 +180,8 @@ class DslTest extends FlatSpec with Matchers {
     val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
 
     val program: Process = "test" on Localhost ~> {
-      case Start => Sudo ~ Exec(procStart)
-      case Stop => Sudo ~ Exec(procStop)
+      case Start => Exec(procStart)
+      case Stop => Exec(procStop)
     }
 
     val startShell: Task = program ! Start
@@ -204,8 +204,8 @@ class DslTest extends FlatSpec with Matchers {
     val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
 
     val program: Process = "test" on Localhost ~> {
-      case Start => Sudo ~ Exec(procStart)
-      case Stop => Sudo ~ Exec(procStop)
+      case Start => Exec(procStart)
+      case Stop => Exec(procStop)
     }
 
     val startShell: Task = program ! Start
