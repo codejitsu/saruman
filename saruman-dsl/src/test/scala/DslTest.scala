@@ -174,6 +174,8 @@ class DslTest extends FlatSpec with Matchers {
   }
 
   it should "run processes on localhost" in {
+    implicit val user = LocalUser("me")
+
     val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
     val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
 
@@ -196,6 +198,8 @@ class DslTest extends FlatSpec with Matchers {
   }
 
   it should "compose processes on localhost" in {
+    implicit val user = LocalUser("me")
+
     val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
     val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
 

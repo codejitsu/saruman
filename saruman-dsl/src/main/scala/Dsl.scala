@@ -16,7 +16,7 @@ object Dsl {
       Processes(p)
     }
 
-    def ~>(proc: PartialFunction[ProcessTask, ProcessCmd]): ProcessStep = Host(List(HostPart(ctx))) ~> proc
+    def ~>(proc: PartialFunction[Command, CommandLine]): ProcessStep = Host(List(HostPart(ctx))) ~> proc
   }
 
   implicit class HostRangeOps[T](val ctx: IndexedSeq[T]) {
@@ -70,18 +70,18 @@ object Dsl {
   }
 
   implicit class HostOps(val ctx: Host) {
-    def ~>(proc: PartialFunction[ProcessTask, ProcessCmd]): ProcessStep = ProcessStep(proc, host = ctx)
+    def ~>(proc: PartialFunction[Command, CommandLine]): ProcessStep = ProcessStep(proc, host = ctx)
   }
 
   implicit class HostsOps(val ctx: Hosts) {
-    def ~>(proc: PartialFunction[ProcessTask, ProcessCmd]): ProcessSteps = {
+    def ~>(proc: PartialFunction[Command, CommandLine]): ProcessSteps = {
       val steps = ctx.hosts map (h => h ~> proc)
       ProcessSteps(steps)
     }
   }
 
   implicit class ProcessOps(val ctx: Process) {
-    def ! (op: ProcessTask)(implicit user: User): Task = new RunnableTask(ctx, user, op)
+    def ! (op: Command)(implicit user: User): Task = new RunnableTask(ctx, user, op)
   }
 
   object Sudo {

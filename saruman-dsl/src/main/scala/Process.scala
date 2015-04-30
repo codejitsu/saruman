@@ -2,44 +2,40 @@
 
 package net.codejitsu.saruman.dsl
 
-sealed trait ProcessTask {
+sealed trait Command {
   def cmd: String
 }
 
-case object Start extends ProcessTask {
+case object Start extends Command {
   val cmd = "start"
 }
 
-case object Stop extends ProcessTask {
+case object Stop extends Command {
   val cmd = "stop"
 }
 
-case object ComposedTask extends ProcessTask {
-  val cmd = "composed"
-}
-
-sealed trait ProcessCmd {
+sealed trait CommandLine {
   def path: String
   def args: Array[String]
   def cmd: String = s"$path ${args.mkString(" ")}"
 }
 
-case class Exec(path: String, params: String*) extends ProcessCmd {
+case class Exec(path: String, params: String*) extends CommandLine {
   def args: Array[String] = params.toArray
 }
 
-case class SudoExec(path: String, params: String*) extends ProcessCmd {
+case class SudoExec(path: String, params: String*) extends CommandLine {
   def args: Array[String] = params.toArray
   override def cmd: String = s"sudo -S ${super.cmd}"
 }
 
-case object NoExec extends ProcessCmd {
+case object NoExec extends CommandLine {
   override val path: String = ""
   override val args: Array[String] = Array.empty[String]
 }
 
-case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, ProcessCmd], verbose: Boolean = false) {
-  def startCmd: ProcessCmd = {
+case class Process(name: String, host: Host, proc: PartialFunction[Command, CommandLine], verbose: Boolean = false) {
+  def startCmd: CommandLine = {
     if (proc.isDefinedAt(Start)) {
       proc(Start)
     } else {
@@ -47,7 +43,7 @@ case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, 
     }
   }
 
-  def stopCmd: ProcessCmd = {
+  def stopCmd: CommandLine = {
     if (proc.isDefinedAt(Stop)) {
       proc(Stop)
     } else {
@@ -58,7 +54,7 @@ case class Process(name: String, host: Host, proc: PartialFunction[ProcessTask, 
   def withStdOut: Process = copy(verbose = true)
 }
 
-case class ProcessStep(proc: PartialFunction[ProcessTask, ProcessCmd], host: Host)
+case class ProcessStep(proc: PartialFunction[Command, CommandLine], host: Host)
 
 case class ProcessSteps(steps: collection.immutable.Seq[ProcessStep])
 
