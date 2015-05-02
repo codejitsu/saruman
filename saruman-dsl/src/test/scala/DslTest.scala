@@ -255,7 +255,6 @@ class DslTest extends FlatSpec with Matchers {
     }
 
     val startShell: Task = program ! Start
-    val stopShell: Task = program ! Stop
 
     val composed = for {
       stSh <- startShell
@@ -349,9 +348,11 @@ class DslTest extends FlatSpec with Matchers {
 
     val processes: Processes = Processes(List(program1, program2, program3, program4))
 
-    val startAllProcsSeq: Task = processes ! Start
+    val startAllProcsSeq: Task = processes !! Start
 
     val composedResult = startAllProcsSeq.run
+
+    println(composedResult.out)
 
     composedResult.success should be (true)
     composedResult.out should have size (4)

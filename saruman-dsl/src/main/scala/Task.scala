@@ -9,7 +9,12 @@ import scala.util.control.NonFatal
  */
 case class TaskResult(success: Boolean, out: List[String], err: List[String])
 
-trait Task {
+trait Do[+T] {
+  def run: T
+  def apply(): T
+}
+
+trait Task extends Do[TaskResult] {
   self =>
 
   def run: TaskResult
@@ -28,7 +33,9 @@ trait Task {
 
   def map[U](f: Unit => U): Task = new Task {
     override def run: TaskResult = {
-      self()
+      val res = self()
+      f(())
+      res
     }
   }
 
