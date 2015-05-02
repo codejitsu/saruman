@@ -2,6 +2,8 @@
 
 package net.codejitsu.saruman.dsl
 
+import scala.concurrent.Future
+
 /**
  * DSL for saruman scripting.
  */
@@ -92,6 +94,21 @@ object Dsl {
 
       tasks.foldLeft[Task](EmptyTask)((acc, t) => acc flatMap(_ => t))
     }
+  /*
+    def !! (op: Command)(implicit user: User): Task = {
+      val tasks = ctx.procs map { p =>
+        p ! op
+      }
+
+      val tasksF = tasks map { task =>
+        new Task {
+          override def run: Future[TaskResult] = Future {
+            task()
+          }
+        }
+      }
+    }
+    */
   }
 
   object Sudo {

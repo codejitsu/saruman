@@ -296,21 +296,67 @@ class DslTest extends FlatSpec with Matchers {
   it should "run processes sequentially" in {
     implicit val user = LocalUser("me")
 
-    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
-    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+    val procStart = "sh " + getClass.getResource("/program-param.sh").getPath
 
-    val program: Process = "test" on Localhost ~> {
-      case Start => Exec(procStart)
-      case Stop => Exec(procStop)
+    val program1: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "1")
     }
 
-    val processes: Processes = Processes(List(program, program, program, program))
+    val program2: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "2")
+    }
+
+    val program3: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "3")
+    }
+
+    val program4: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "4")
+    }
+
+    val processes: Processes = Processes(List(program1, program2, program3, program4))
 
     val startAllProcsSeq: Task = processes ! Start
 
     val composedResult = startAllProcsSeq.run
 
     composedResult.success should be (true)
-    composedResult.out should be (List("start test program", "start test program", "start test program", "start test program"))
+    composedResult.out should be (List("start test program with param: 1", "start test program with param: 2",
+      "start test program with param: 3", "start test program with param: 4"))
+    composedResult.err should be (empty)
+  }
+
+  it should "run processes parallel" in {
+    implicit val user = LocalUser("me")
+
+    val procStart = "sh " + getClass.getResource("/program-param.sh").getPath
+
+    val program1: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "1")
+    }
+
+    val program2: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "2")
+    }
+
+    val program3: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "3")
+    }
+
+    val program4: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "4")
+    }
+
+    val processes: Processes = Processes(List(program1, program2, program3, program4))
+
+    val startAllProcsSeq: Task = processes ! Start
+
+    val composedResult = startAllProcsSeq.run
+
+    composedResult.success should be (true)
+    composedResult.out should have size (4)
+    composedResult.out should contain allOf ("start test program with param: 1", "start test program with param: 2",
+      "start test program with param: 3", "start test program with param: 4")
+    composedResult.err should be (empty)
   }
 }
