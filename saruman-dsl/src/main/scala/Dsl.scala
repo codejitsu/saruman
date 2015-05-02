@@ -84,6 +84,16 @@ object Dsl {
     def ! (op: Command)(implicit user: User): Task = new ShellTask(ctx, op)
   }
 
+  implicit class ProcessesOps(val ctx: Processes) {
+    def ! (op: Command)(implicit user: User): Task = {
+      val tasks = ctx.procs map { p =>
+        p ! op
+      }
+
+      tasks.foldLeft[Task](EmptyTask)((acc, t) => acc flatMap(_ => t))
+    }
+  }
+
   object Sudo {
     def ~ (exec: Exec): SudoExec = SudoExec(exec.path, exec.params :_*)
   }

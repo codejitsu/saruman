@@ -292,4 +292,25 @@ class DslTest extends FlatSpec with Matchers {
     composedResult.out should be (empty)
     composedResult.err should be (List("task error"))
   }
+
+  it should "run processes sequentially" in {
+    implicit val user = LocalUser("me")
+
+    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
+    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+
+    val program: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart)
+      case Stop => Exec(procStop)
+    }
+
+    val processes: Processes = Processes(List(program, program, program, program))
+
+    val startAllProcsSeq: Task = processes ! Start
+
+    val composedResult = startAllProcsSeq.run
+
+    composedResult.success should be (true)
+    composedResult.out should be (List("start test program", "start test program", "start test program", "start test program"))
+  }
 }

@@ -56,6 +56,10 @@ case class FailedTask(out: List[String], err: List[String]) extends Task {
   override def run: TaskResult = TaskResult(false, out, err)
 }
 
+case object EmptyTask extends Task {
+  override def run: TaskResult = TaskResult(true, Nil, Nil)
+}
+
 class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) extends Task {
   import scala.collection.mutable.ListBuffer
   import scala.sys.process._
@@ -133,7 +137,7 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
       println(s"SSH: ${commandLine.mkString(" ")}")
     }
 
-    val proc = (commandLine run (ProcessLogger(doOut(out)(_), doOut(err)(_))))
+    val proc = commandLine run (ProcessLogger(doOut(out)(_), doOut(err)(_)))
     val result = proc.exitValue
 
     TaskResult(result == 0, out.toList, err.toList)
