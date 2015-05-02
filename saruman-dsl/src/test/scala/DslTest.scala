@@ -163,6 +163,46 @@ class DslTest extends FlatSpec with Matchers {
     }
   }
 
+  it should "allow to define processes on multiple hosts (simple view, 2)" in {
+    val hosts = "my.test.host" ~ (1 to 10)
+
+    val tomcats = "tomcat" on hosts ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    tomcats.procs.size should be (10)
+
+    tomcats.procs.map(_.host.toString).toSet.size should be (10)
+
+    tomcats.procs.foreach { tomcat =>
+      tomcat.name should be ("tomcat")
+      tomcat.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+      tomcat.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+      tomcat.host.toString.startsWith("my.test.host") should be (true)
+    }
+  }
+
+  it should "allow to define processes on multiple hosts (simple view, 3)" in {
+    val hosts = "my.test.host" ~ ((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+
+    val tomcats = "tomcat" on hosts ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    tomcats.procs.size should be (10)
+
+    tomcats.procs.map(_.host.toString).toSet.size should be (10)
+
+    tomcats.procs.foreach { tomcat =>
+      tomcat.name should be ("tomcat")
+      tomcat.startCmd should be (Exec("/etc/init.d/tomcat", "start"))
+      tomcat.stopCmd should be (Exec("/etc/init.d/tomcat", "stop"))
+      tomcat.host.toString.startsWith("my.test.host") should be (true)
+    }
+  }
+
   it should "allow to define tasks with processes" in {
     val tomcat: Process = "tomcat" on Localhost ~> {
       case Start => Exec("/etc/init.d/tomcat", "start")
@@ -355,12 +395,32 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = startAllProcsSeq.run
 
-    println(composedResult.out)
-
     composedResult.success should be (true)
     composedResult.out should have size (4)
     composedResult.out should contain allOf ("start test program with param: 1", "start test program with param: 2",
       "start test program with param: 3", "start test program with param: 4")
     composedResult.err should be (empty)
   }
+
+  /*
+  def deploymentTomcat(): Unit = {
+    val hosts = "my.dev.test-host" ~ (1 to 5)
+
+    val tomcats = "tomcat" on hosts ~> {
+      case Start => Exec("/etc/init.d/tomcat", "start")
+      case Stop => Exec("/etc/init.d/tomcat", "stop")
+    }
+
+    val file = "/tmp/test.war"
+
+    val deployOnTomcat = for {
+      _ <- Rm(hosts)("test.war")
+      _ <- UploadFile(hosts)(file)
+      _ <- tomcats !! Stop
+      _ <- CopyWar(hosts)("/tomcat/webapp/")("test.war")
+      _ <- tomcats !! Start
+      deployed <- CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
+    } yield deployed
+  }
+  */
 }

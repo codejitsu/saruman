@@ -12,6 +12,22 @@ object Dsl {
   implicit class HostStringOps(val ctx: String) {
     def ~ (part: String): Host = Host(List(HostPart(ctx), HostPart(part)))
 
+    def ~[P](parts: IndexedSeq[P]): Hosts = {
+      val all = for {
+        y <- parts
+      } yield Host(List(HostPart(ctx), HostPart(y.toString)))
+
+      Hosts(all.toList)
+    }
+
+    def ~(parts: Product): Hosts = {
+      val flatProduct = for {
+        i <- 0 until parts.productArity
+      } yield parts.productElement(i).toString
+
+      this ~ flatProduct
+    }
+
     def on (ps: ProcessStep): Process = Process(ctx, ps.host, ps.proc)
 
     def on (ps: ProcessSteps): Processes = {
