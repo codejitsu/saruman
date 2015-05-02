@@ -81,7 +81,7 @@ object Dsl {
   }
 
   implicit class ProcessOps(val ctx: Process) {
-    def ! (op: Command)(implicit user: User): Task = new RunnableTask(ctx, user, op)
+    def ! (op: Command)(implicit user: User): Task = new ShellTask(ctx, op)
   }
 
   object Sudo {

@@ -14,6 +14,8 @@ trait Task {
 
   def run: TaskResult
 
+  def apply(): TaskResult = run
+
   def andThen(task: Task): Task = new Task {
     override def run: TaskResult = {
       val thisResult = self.run
@@ -23,9 +25,38 @@ trait Task {
         thisResult.err ++ taskResult.err)
     }
   }
+
+  def map[U](f: Unit => U): Task = new Task {
+    override def run: TaskResult = {
+      self()
+    }
+  }
+
+  def flatMap(f: TaskResult => Task): Task = {
+    val selfRes = self()
+
+    if (selfRes.success) {
+      new Task {
+        override def run: TaskResult = {
+          if (selfRes.success) {
+            val res = f(selfRes)()
+            TaskResult(res.success, selfRes.out ++ res.out, selfRes.err ++ res.err)
+          } else {
+            selfRes
+          }
+        }
+      }
+    } else {
+      FailedTask(selfRes.out, selfRes.err)
+    }
+  }
 }
 
-class RunnableTask(val ctx: Process, val user: User, val op: Command) extends Task {
+case class FailedTask(out: List[String], err: List[String]) extends Task {
+  override def run: TaskResult = TaskResult(false, out, err)
+}
+
+class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) extends Task {
   import scala.collection.mutable.ListBuffer
   import scala.sys.process._
 
@@ -106,30 +137,6 @@ class RunnableTask(val ctx: Process, val user: User, val op: Command) extends Ta
     val result = proc.exitValue
 
     TaskResult(result == 0, out.toList, err.toList)
-  }
-
-  private def executeRemoteDirectSsh(remoteHost: Host, cmd: String): TaskResult = user match {
-    case sshu: SshUser =>
-      import com.decodified.scalassh.{SimplePasswordProducer, PublicKeyLogin, SSH}
-      import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
-
-      val out = ListBuffer[String]()
-      val err = ListBuffer[String]()
-
-      val publicKeyLogin =
-        PublicKeyLogin(user.username, SimplePasswordProducer(sshu.password().mkString),
-          sshu.keyFile map (_.getPath :: Nil) getOrElse DefaultKeyLocations)
-
-      val result = SSH(remoteHost.toString(), publicKeyLogin) { ssh =>
-        ssh.exec(cmd)
-      }
-
-      result match {
-        case Left(e) => TaskResult(false, Nil, List(e))
-        case Right(b) => TaskResult(true, List(b.stdOutAsString()), List(b.stdErrAsString()))
-      }
-
-    case _ => TaskResult(false, Nil, List("Please provide ssh credentials."))
   }
 
   private def execute(cmd: CommandLine): TaskResult = ctx.host match {

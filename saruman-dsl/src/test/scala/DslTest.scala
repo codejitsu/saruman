@@ -217,5 +217,79 @@ class DslTest extends FlatSpec with Matchers {
     composedResult.success should be (true)
     composedResult.out should be (List("start test program", "stop test program"))
   }
-  //TODO task as monad
+
+  it should "compose processes on monadic way" in {
+    implicit val user = LocalUser("me")
+
+    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
+    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+
+    val program: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart)
+      case Stop => Exec(procStop)
+    }
+
+    val startShell: Task = program ! Start
+    val stopShell: Task = program ! Stop
+
+    val composed = for {
+      stSh <- startShell
+      stopSh <- stopShell
+    } yield stopSh
+
+    val composedResult = composed.run
+
+    composedResult.success should be (true)
+    composedResult.out should be (List("start test program", "stop test program"))
+  }
+
+  it should "compose processes on monadic way (one task)" in {
+    implicit val user = LocalUser("me")
+
+    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
+    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+
+    val program: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart)
+      case Stop => Exec(procStop)
+    }
+
+    val startShell: Task = program ! Start
+    val stopShell: Task = program ! Stop
+
+    val composed = for {
+      stSh <- startShell
+    } yield stSh
+
+    val composedResult = composed.run
+
+    composedResult.success should be (true)
+    composedResult.out should be (List("start test program"))
+  }
+
+  it should "compose processes on monadic way (failure)" in {
+    implicit val user = LocalUser("me")
+
+    val procStart = "sh " + getClass.getResource("/program-start.sh").getPath
+    val procStop = "sh " + getClass.getResource("/program-stop.sh").getPath
+
+    val program: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart)
+      case Stop => Exec(procStop)
+    }
+
+    val startShellFailure: Task = FailedTask(List(), List("task error"))
+    val stopShell: Task = program ! Stop
+
+    val composed = for {
+      stSh <- startShellFailure
+      stopSh <- stopShell
+    } yield stopSh
+
+    val composedResult = composed.run
+
+    composedResult.success should be (false)
+    composedResult.out should be (empty)
+    composedResult.err should be (List("task error"))
+  }
 }

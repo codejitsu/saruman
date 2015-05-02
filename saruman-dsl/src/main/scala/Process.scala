@@ -14,6 +14,10 @@ case object Stop extends Command {
   val cmd = "stop"
 }
 
+case object Kill extends Command {
+  val cmd = "kill"
+}
+
 sealed trait CommandLine {
   def path: String
   def args: Array[String]
