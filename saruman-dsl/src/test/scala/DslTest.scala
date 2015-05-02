@@ -7,6 +7,9 @@ import org.scalatest.{Matchers, FlatSpec}
  */
 class DslTest extends FlatSpec with Matchers {
   import Dsl._
+  import scala.concurrent.duration._
+
+  implicit val timeout = 30 seconds
 
   "DSL" should "allow to compose two host parts together with ~" in {
     val host: Host = "my" ~ "test" ~ "host" ~ "system.1"

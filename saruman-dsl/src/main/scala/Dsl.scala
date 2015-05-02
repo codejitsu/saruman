@@ -88,32 +88,26 @@ object Dsl {
   }
 
   implicit class ProcessesOps(val ctx: Processes) {
+    import scala.concurrent.duration._
+
     def ! (op: Command)(implicit user: User): Task = {
-      val tasks = ctx.procs map { p =>
-        p ! op
-      }
+      val tasks = ctx.procs.map(_ ! op)
 
       tasks.foldLeft[Task](EmptyTask)((acc, t) => acc flatMap(_ => t))
     }
 
-    def !! (op: Command)(implicit user: User): Task = {
-      val tasks = ctx.procs map { p =>
-        p ! op
-      }
-
-      val tasksF = tasks map { task =>
-        () => Future {
-          task()
-        }
-      }
+    def !! (op: Command)(implicit user: User, timeout: Duration): Task = {
+      val tasksF = ctx.procs
+        .map(_ ! op)
+        .map(t => () => Future {
+          t.run
+        })
 
       new Task {
         override def run: TaskResult = {
-          import scala.concurrent.duration._
-
           val tasksFRes = Future.sequence(tasksF.map(_()))
 
-          val result = Await.result(tasksFRes, Duration.Inf)
+          val result = Await.result(tasksFRes, timeout)
 
           val resultSuccess = result.map(_.success).forall(identity)
           val resultOut = result.map(_.out).foldLeft(List.empty[String])((acc, out) => acc ++ out)
