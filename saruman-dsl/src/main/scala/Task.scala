@@ -21,15 +21,7 @@ trait Task extends Do[TaskResult] {
 
   def apply(): TaskResult = run
 
-  def andThen(task: Task): Task = new Task {
-    override def run: TaskResult = {
-      val thisResult = self.run
-      val taskResult = task.run
-
-      TaskResult(thisResult.success && taskResult.success, thisResult.out ++ taskResult.out,
-        thisResult.err ++ taskResult.err)
-    }
-  }
+  def andThen(task: Task): Task = this flatMap (_ => task)
 
   def map[U](f: Unit => U): Task = new Task {
     override def run: TaskResult = {

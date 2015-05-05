@@ -401,8 +401,7 @@ class DslTest extends FlatSpec with Matchers {
       "start test program with param: 3", "start test program with param: 4")
     composedResult.err should be (empty)
   }
-
-  /*
+/*
   def deploymentTomcat(): Unit = {
     val hosts = "my.dev.test-host" ~ (1 to 5)
 
@@ -421,6 +420,14 @@ class DslTest extends FlatSpec with Matchers {
       _ <- tomcats !! Start
       deployed <- CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
     } yield deployed
+
+    val deployOnTomcat2 =
+        Rm(hosts)("test.war") andThen
+        UploadFile(hosts)(file) andThen
+        (tomcats !! Stop) andThen
+        CopyWar(hosts)("/tomcat/webapp/")("test.war") andThen
+        (tomcats !! Start)  andThen
+        CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
   }
   */
 }
