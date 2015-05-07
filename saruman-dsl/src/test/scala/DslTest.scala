@@ -414,19 +414,19 @@ class DslTest extends FlatSpec with Matchers {
     val file = "/tmp/test.war"
 
     val deployOnTomcat = for {
-      _ <- Rm(hosts)("test.war")
-      _ <- UploadFile(hosts)(file)
+      _ <- RmIfExists(hosts)(user.home / "test.war")
+      _ <- Upload(hosts)(file)
       _ <- tomcats !! Stop
-      _ <- CopyWar(hosts)("/tomcat/webapp/")("test.war")
+      _ <- Mv(hosts)(user.home / "test.war")("/tomcat/webapp/")
       _ <- tomcats !! Start
       deployed <- CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
     } yield deployed
 
     val deployOnTomcat2 =
-        Rm(hosts)("test.war") andThen
-        UploadFile(hosts)(file) andThen
+        RmIfExists(hosts)(user.home / "test.war") andThen
+        Upload(hosts)(file) andThen
         (tomcats !! Stop) andThen
-        CopyWar(hosts)("/tomcat/webapp/")("test.war") andThen
+        Mv(hosts)(user.home / "test.war")("/tomcat/webapp/") andThen
         (tomcats !! Start)  andThen
         CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
   }

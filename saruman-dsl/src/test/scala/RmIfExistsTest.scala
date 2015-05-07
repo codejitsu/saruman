@@ -1,28 +1,26 @@
 package net.codejitsu.saruman.dsl
 
 import java.io.File
-import java.util.UUID
 import org.scalatest.{FlatSpec, Matchers}
 
 /**
- * RmTask tests.
+ * RmIfExists tests.
  */
-class RmTest extends FlatSpec with Matchers {
+class RmIfExistsTest extends FlatSpec with Matchers {
   import scala.concurrent.duration._
   import Dsl._
 
   implicit val timeout = 30 seconds
 
-  "Rm task" should "remove a file with given name on given host" in {
+  "RmIfExists task" should "remove a file with given name on given host" in {
     implicit val user = LocalUser("me")
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
-    val name = s"${UUID.randomUUID().toString}testfile.txt"
-    val file2create = new File(path + name)
+    val file2create = new File(path + "testfile.txt")
 
     file2create.exists should be (false)
 
-    val touchTask: Task = Touch(Localhost, path + name)
+    val touchTask: Task = Touch(Localhost, path + "testfile.txt")
 
     val touchResult = touchTask.run
 
@@ -32,9 +30,11 @@ class RmTest extends FlatSpec with Matchers {
 
     file2create.exists should be (true)
 
-    val rmTask: Task = Rm(Localhost, path + name)
+    val rmTask: Task = RmIfExists(Localhost, path + "testfile.txt")
 
     val rmResult = rmTask.run
+
+    println(rmResult)
 
     rmResult.success should be (true)
     rmResult.out should be (empty)
@@ -47,14 +47,13 @@ class RmTest extends FlatSpec with Matchers {
     implicit val user = LocalUser("me")
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
-    val name = s"${UUID.randomUUID().toString}testfile.txt"
-    val file2create = new File(path + name)
+    val file2create = new File(path + "testfile.txt")
 
     file2create.exists should be (false)
 
     val task = for {
-      tr <- Touch(Localhost, path + name)
-      rr <- Rm(Localhost, path + name)
+      tr <- Touch(Localhost, path + "testfile.txt")
+      rr <- RmIfExists(Localhost, path + "testfile.txt")
     } yield rr
 
     val result = task.run
@@ -70,14 +69,13 @@ class RmTest extends FlatSpec with Matchers {
     implicit val user = LocalUser("me")
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
-    val name = s"${UUID.randomUUID().toString}testfile.txt"
-    val file2create = new File(path + name)
+    val file2create = new File(path + "testfile.txt")
 
     file2create.exists should be (false)
 
     val task =
-      Touch(Localhost, path + name) andThen
-      Rm(Localhost, path + name)
+      Touch(Localhost, path + "testfile.txt") andThen
+        RmIfExists(Localhost, path + "testfile.txt")
 
     val result = task.run
 
@@ -88,26 +86,25 @@ class RmTest extends FlatSpec with Matchers {
     file2create.exists should be (false)
   }
 
-  it should "return error if file dont exists" in {
+  it should "not return error if file dont exists" in {
     implicit val user = LocalUser("me")
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
-    val name = s"${UUID.randomUUID().toString}testfile.txt"
-    val file2create = new File(path + name)
+    val file2create = new File(path + "testfile.txt")
 
     file2create.exists should be (false)
 
     val task = for {
-      tr  <- Touch(Localhost, path + name)
-      rr1 <- Rm(Localhost, path + name)
-      rr2 <- Rm(Localhost, path + name)
+      tr  <- Touch(Localhost, path + "testfile.txt")
+      rr1 <- RmIfExists(Localhost, path + "testfile.txt")
+      rr2 <- RmIfExists(Localhost, path + "testfile.txt")
     } yield rr2
 
     val result = task.run
 
-    result.success should be (false)
+    result.success should be (true)
     result.out should be (empty)
-    result.err should not be (empty)
+    result.err should be (empty)
 
     file2create.exists should be (false)
   }

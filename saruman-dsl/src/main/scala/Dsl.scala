@@ -138,4 +138,6 @@ object Dsl {
   object Sudo {
     def ~ (exec: Exec): SudoExec = SudoExec(exec.path, exec.params :_*)
   }
+
+  implicit def host2Hosts(host: Host): Hosts = Hosts(List(host))
 }

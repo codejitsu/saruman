@@ -62,4 +62,6 @@ case class ProcessStep(proc: PartialFunction[Command, CommandLine], host: Host)
 
 case class ProcessSteps(steps: collection.immutable.Seq[ProcessStep])
 
-case class Processes(procs: collection.immutable.Seq[Process])
+case class Processes(procs: collection.immutable.Seq[Process]) {
+  def withStdOut: Processes = copy(procs = procs.map(_.withStdOut))
+}

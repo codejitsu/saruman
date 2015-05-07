@@ -5,22 +5,25 @@ import java.util.UUID
 import org.scalatest.{FlatSpec, Matchers}
 
 /**
- * RmTask tests.
+ * Cp tests.
  */
-class RmTest extends FlatSpec with Matchers {
+class CpTest extends FlatSpec with Matchers {
   import scala.concurrent.duration._
   import Dsl._
 
   implicit val timeout = 30 seconds
 
-  "Rm task" should "remove a file with given name on given host" in {
+  "Cp task" should "copy a file with given name on given host" in {
     implicit val user = LocalUser("me")
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
     val name = s"${UUID.randomUUID().toString}testfile.txt"
+    val namecopy = s"${UUID.randomUUID().toString}testfile.txt"
     val file2create = new File(path + name)
+    val file2copy = new File(path + namecopy)
 
     file2create.exists should be (false)
+    file2copy.exists should be (false)
 
     val touchTask: Task = Touch(Localhost, path + name)
 
@@ -32,15 +35,15 @@ class RmTest extends FlatSpec with Matchers {
 
     file2create.exists should be (true)
 
-    val rmTask: Task = Rm(Localhost, path + name)
+    val copyTask: Task = Cp(Localhost, path + name, path + namecopy)
 
-    val rmResult = rmTask.run
+    val copyResult = copyTask.run
 
-    rmResult.success should be (true)
-    rmResult.out should be (empty)
-    rmResult.err should be (empty)
+    copyResult.success should be (true)
+    copyResult.out should be (empty)
+    copyResult.err should be (empty)
 
-    file2create.exists should be (false)
+    file2copy.exists should be (true)
   }
 
   it should "compose with the touch task" in {
@@ -48,14 +51,17 @@ class RmTest extends FlatSpec with Matchers {
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
     val name = s"${UUID.randomUUID().toString}testfile.txt"
+    val namecopy = s"${UUID.randomUUID().toString}testfile.txt"
     val file2create = new File(path + name)
+    val file2copy = new File(path + namecopy)
 
     file2create.exists should be (false)
+    file2copy.exists should be (false)
 
     val task = for {
       tr <- Touch(Localhost, path + name)
-      rr <- Rm(Localhost, path + name)
-    } yield rr
+      cr <- Cp(Localhost, path + name, path + namecopy)
+    } yield cr
 
     val result = task.run
 
@@ -63,7 +69,7 @@ class RmTest extends FlatSpec with Matchers {
     result.out should be (empty)
     result.err should be (empty)
 
-    file2create.exists should be (false)
+    file2copy.exists should be (true)
   }
 
   it should "compose with the touch task with `andThen`" in {
@@ -71,13 +77,16 @@ class RmTest extends FlatSpec with Matchers {
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
     val name = s"${UUID.randomUUID().toString}testfile.txt"
+    val namecopy = s"${UUID.randomUUID().toString}testfile.txt"
     val file2create = new File(path + name)
+    val file2copy = new File(path + namecopy)
 
     file2create.exists should be (false)
+    file2copy.exists should be (false)
 
     val task =
       Touch(Localhost, path + name) andThen
-      Rm(Localhost, path + name)
+      Cp(Localhost, path + name, path + namecopy)
 
     val result = task.run
 
@@ -85,7 +94,7 @@ class RmTest extends FlatSpec with Matchers {
     result.out should be (empty)
     result.err should be (empty)
 
-    file2create.exists should be (false)
+    file2copy.exists should be (true)
   }
 
   it should "return error if file dont exists" in {
@@ -93,15 +102,17 @@ class RmTest extends FlatSpec with Matchers {
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
     val name = s"${UUID.randomUUID().toString}testfile.txt"
+    val namecopy = s"${UUID.randomUUID().toString}testfile.txt"
     val file2create = new File(path + name)
+    val file2copy = new File(path + namecopy)
 
     file2create.exists should be (false)
+    file2copy.exists should be (false)
 
     val task = for {
       tr  <- Touch(Localhost, path + name)
-      rr1 <- Rm(Localhost, path + name)
-      rr2 <- Rm(Localhost, path + name)
-    } yield rr2
+      cp <- Cp(Localhost, path + name + "1", path + namecopy)
+    } yield cp
 
     val result = task.run
 
@@ -109,6 +120,6 @@ class RmTest extends FlatSpec with Matchers {
     result.out should be (empty)
     result.err should not be (empty)
 
-    file2create.exists should be (false)
+    file2copy.exists should be (false)
   }
 }
