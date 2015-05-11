@@ -2,77 +2,57 @@
 
 package net.codejitsu.saruman.dsl
 
-import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 class TaskExecutionError(err: List[String]) extends Exception(err.mkString)
 
-case class TaskResult(success: Boolean, out: List[String], err: List[String])
+case class TaskIO(out: List[String], err: List[String])
 
 trait TaskM[+R] {
   self =>
 
-  def run: Try[R]
+  def run: (Try[R], List[String], List[String])
 
-  def apply(): Try[R] = run
+  def apply(): (Try[R], List[String], List[String]) = run
 
-  def andThen[T](task: TaskM[T]): TaskM[T] = this flatMap (_ => task)
+  def andThen[T >: R](task: TaskM[T]): TaskM[T] = this flatMap (_ => task)
 
   def map[U](f: R => U): TaskM[U] = new TaskM[U] {
-    override def run: Try[U] = {
-      val selfRes = self()
-
-      //println(s"map: ${self.getClass.getName}: " + selfRes)
-
-      selfRes.map(f)
+    override def run: (Try[U], List[String], List[String]) = {
+      val (selfRes, out, err) = self()
+      (selfRes.map(f), out, err)
     }
   }
 
-  def flatMap[T](f: R => TaskM[T]): TaskM[T] = new TaskM[T] {
-    override def run: Try[T] = {
-      val selfRes = self()
-
-      //println(s"flatMap: ${self.getClass.getName}: " + selfRes)
+  def flatMap[T >: R](f: R => TaskM[T]): TaskM[T] = new TaskM[T] {
+    override def run: (Try[T], List[String], List[String]) = {
+      val (selfRes, out, err) = self()
 
       selfRes match {
-        case Success(r) => f(r).run
-        case Failure(e) => Failure(e)
+        case Success(r) =>
+          val (nextRes, nout, nerr) = f(r).run
+          (nextRes, out ++ nout, err ++ nerr)
+
+        case Failure(e) => (Failure(e), out, err)
       }
     }
   }
-//    val selfRes = self()
-//
-//    if (selfRes.isSuccess) {
-//      new Task {
-//        override def run: TaskResult = {
-//          if (selfRes.success) {
-//            val res = f(selfRes)()
-//            TaskResult(res.success, selfRes.out ++ res.out, selfRes.err ++ res.err)
-//          } else {
-//            selfRes
-//          }
-//        }
-//      }
-//    } else {
-//      FailedTask(selfRes.out, selfRes.err)
-//    }
 }
 
-trait Task extends TaskM[TaskResult]
-
-case class FailedTask(out: List[String], err: List[String]) extends Task {
-  override def run: Try[TaskResult] = Failure(new IllegalStateException)
+case class FailedTask(out: List[String], err: List[String]) extends TaskM[Boolean] {
+  override def run: (Try[Boolean], List[String], List[String]) = (Failure(new TaskExecutionError(Nil)), Nil, Nil)
 }
 
-case object EmptyTask extends Task {
-  override def run: Try[TaskResult] = Success(TaskResult(true, Nil, Nil))
+case object EmptyTask extends TaskM[Boolean] {
+  override def run: (Try[Boolean], List[String], List[String]) = (Success(true), Nil, Nil)
 }
 
-class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) extends Task {
+class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) extends TaskM[Boolean] {
   import scala.collection.mutable.ListBuffer
   import scala.sys.process._
 
-  override def run: Try[TaskResult] = op match {
+  override def run: (Try[Boolean], List[String], List[String]) = op match {
     case Start => execute(ctx.startCmd)
 
     case Stop => execute(ctx.stopCmd)
@@ -88,7 +68,7 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
     }
   }
 
-  private def executeLocal(cmd: CommandLine): TaskResult = user match {
+  private def executeLocal(cmd: CommandLine): (Try[Boolean], List[String], List[String]) = user match {
     case lu @ LocalUser(_) =>
       val out = ListBuffer[String]()
       val err = ListBuffer[String]()
@@ -107,12 +87,18 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
         case NoExec => 0
       }
 
-      TaskResult(result == 0, out.toList, err.toList)
+      if (result == 0) {
+        (Success(true), out.toList, err.toList)
+      } else {
+        (Failure(new TaskExecutionError(err.toList)), out.toList, err.toList)
+      }
 
-    case _ => TaskResult(false, Nil, List("Please provide localhost credentials."))
+    case _ =>
+      (Failure(new TaskExecutionError(List("Please provide localhost credentials."))), Nil,
+        List("Please provide localhost credentials."))
   }
 
-  private def executeRemoteSsh(remoteHost: Host, cmd: CommandLine): TaskResult = {
+  private def executeRemoteSsh(remoteHost: Host, cmd: CommandLine): (Try[Boolean], List[String], List[String]) = {
     val out = ListBuffer[String]()
     val err = ListBuffer[String]()
 
@@ -148,18 +134,15 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
     val proc = commandLine run (ProcessLogger(doOut(out)(_), doOut(err)(_)))
     val result = proc.exitValue
 
-    TaskResult(result == 0, out.toList, err.toList)
+    if (result == 0) {
+      (Success(true), out.toList, err.toList)
+    } else {
+      (Failure(new TaskExecutionError(err.toList)), out.toList, err.toList)
+    }
   }
 
-  private def execute(cmd: CommandLine): Try[TaskResult] = {
-    val res = ctx.host match {
-      case Localhost => executeLocal(cmd)
-      case remoteHost: Host => executeRemoteSsh(remoteHost, cmd)
-    }
-
-    res match {
-      case TaskResult(true, _, _) => Success(res)
-      case TaskResult(false, _, _) => Failure(new TaskExecutionError(res.err))
-    }
+  private def execute(cmd: CommandLine): (Try[Boolean], List[String], List[String]) = ctx.host match {
+    case Localhost => executeLocal(cmd)
+    case remoteHost: Host => executeRemoteSsh(remoteHost, cmd)
   }
 }

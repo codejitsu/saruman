@@ -15,14 +15,14 @@ import scala.util.Try
  * @param file target file
  * @param user user
  */
-case class Touch(hosts: Hosts, file: String)(implicit user: User) extends Task {
+case class Touch(hosts: Hosts, file: String)(implicit user: User) extends TaskM[Boolean] {
   private val touch: Processes = "touch" on hosts ~> {
     case Start => Exec("/usr/bin/touch", file)
   }
 
-  private val touchTask: TaskM[TaskResult] = touch ! Start
+  private val touchTask: TaskM[Boolean] = touch ! Start
 
-  override def run: Try[TaskResult] = touchTask()
+  override def run: (Try[Boolean], List[String], List[String]) = touchTask()
 }
 
 /**
@@ -33,14 +33,14 @@ case class Touch(hosts: Hosts, file: String)(implicit user: User) extends Task {
  * @param params command flags
  * @param user user
  */
-class Rm(hosts: Hosts, target: String, params: List[String] = Nil)(implicit user: User) extends Task {
+class Rm(hosts: Hosts, target: String, params: List[String] = Nil)(implicit user: User) extends TaskM[Boolean] {
   private val rm: Processes = "rm" on hosts ~> {
     case Start => Exec("/bin/rm",  params ::: List(target) :_*)
   }
 
-  private val rmTask: TaskM[TaskResult] = rm ! Start
+  private val rmTask: TaskM[Boolean] = rm ! Start
 
-  override def run: Try[TaskResult] = rmTask()
+  override def run: (Try[Boolean], List[String], List[String]) = rmTask()
 }
 
 object Rm {
@@ -66,14 +66,14 @@ case class RmIfExists(hosts: Hosts, target: String)(implicit user: User) extends
  * @param params task flags
  * @param user user
  */
-class Cp(hosts: Hosts, source: String, destination: String, params: List[String] = Nil)(implicit user: User) extends Task {
+class Cp(hosts: Hosts, source: String, destination: String, params: List[String] = Nil)(implicit user: User) extends TaskM[Boolean] {
   private val rsync: Processes = "rsync" on hosts ~> {
     case Start => Exec("/usr/bin/rsync", params ::: List(source, destination) :_*)
   }
 
-  private val rsyncTask: TaskM[TaskResult] = rsync ! Start
+  private val rsyncTask: TaskM[Boolean] = rsync ! Start
 
-  override def run: Try[TaskResult] = rsyncTask()
+  override def run: (Try[Boolean], List[String], List[String]) = rsyncTask()
 }
 
 object Cp {
@@ -92,7 +92,7 @@ object Cp {
  * @param destinationPath path on destination hosts
  * @param user user
  */
-case class Upload(source: String, target: Hosts, destinationPath: String)(implicit user: LocalUser) extends Task {
+case class Upload(source: String, target: Hosts, destinationPath: String)(implicit user: LocalUser) extends TaskM[Boolean] {
   private lazy val uploadTasks = target.hosts map {
     case h: Host =>
       val up: Process = "rsync" on Localhost ~> {
@@ -102,7 +102,7 @@ case class Upload(source: String, target: Hosts, destinationPath: String)(implic
       up ! Start
   }
 
-  private lazy val uploadTask: TaskM[TaskResult] = uploadTasks.foldLeft[TaskM[TaskResult]](EmptyTask)((acc, t) => acc flatMap (_ => t))
+  private lazy val uploadTask: TaskM[Boolean] = uploadTasks.foldLeft[TaskM[Boolean]](EmptyTask)((acc, t) => acc flatMap (_ => t))
 
-  override def run: Try[TaskResult] = uploadTask()
+  override def run: (Try[Boolean], List[String], List[String]) = uploadTask()
 }

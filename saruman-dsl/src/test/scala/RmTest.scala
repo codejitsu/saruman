@@ -22,25 +22,23 @@ class RmTest extends FlatSpec with Matchers {
 
     file2create.exists should be (false)
 
-    val touchTask: Task = Touch(Localhost, path + name)
+    val touchTask: TaskM[Boolean] = Touch(Localhost, path + name)
 
     val touchResult = touchTask.run
 
-    touchResult.isSuccess should be (true)
-    touchResult.get.success should be (true)
-    touchResult.get.out should be (empty)
-    touchResult.get.err should be (empty)
+    touchResult._1.isSuccess should be (true)
+    touchResult._2 should be (empty)
+    touchResult._3 should be (empty)
 
     file2create.exists should be (true)
 
-    val rmTask: Task = Rm(Localhost, path + name)
+    val rmTask: TaskM[Boolean] = Rm(Localhost, path + name)
 
     val rmResult = rmTask.run
 
-    rmResult.isSuccess should be (true)
-    rmResult.get.success should be (true)
-    rmResult.get.out should be (empty)
-    rmResult.get.err should be (empty)
+    rmResult._1.isSuccess should be (true)
+    rmResult._2 should be (empty)
+    rmResult._3 should be (empty)
 
     file2create.exists should be (false)
   }
@@ -61,10 +59,9 @@ class RmTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2create.exists should be (false)
   }
@@ -84,10 +81,9 @@ class RmTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2create.exists should be (false)
   }
@@ -109,7 +105,7 @@ class RmTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (false)
+    result._1.isSuccess should be (false)
     file2create.exists should be (false)
   }
 }

@@ -20,25 +20,23 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     file2create.exists should be (false)
 
-    val touchTask: Task = Touch(Localhost, path + "testfile.txt")
+    val touchTask = Touch(Localhost, path + "testfile.txt")
 
     val touchResult = touchTask.run
 
-    touchResult.isSuccess should be (true)
-    touchResult.get.success should be (true)
-    touchResult.get.out should be (empty)
-    touchResult.get.err should be (empty)
+    touchResult._1.isSuccess should be (true)
+    touchResult._2 should be (empty)
+    touchResult._3 should be (empty)
 
     file2create.exists should be (true)
 
-    val rmTask: Task = RmIfExists(Localhost, path + "testfile.txt")
+    val rmTask = RmIfExists(Localhost, path + "testfile.txt")
 
     val rmResult = rmTask.run
 
-    rmResult.isSuccess should be (true)
-    rmResult.get.success should be (true)
-    rmResult.get.out should be (empty)
-    rmResult.get.err should be (empty)
+    rmResult._1.isSuccess should be (true)
+    rmResult._2 should be (empty)
+    rmResult._3 should be (empty)
 
     file2create.exists should be (false)
   }
@@ -58,10 +56,9 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2create.exists should be (false)
   }
@@ -80,10 +77,9 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2create.exists should be (false)
   }
@@ -104,10 +100,9 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2create.exists should be (false)
   }

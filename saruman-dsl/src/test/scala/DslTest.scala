@@ -2,6 +2,8 @@ package net.codejitsu.saruman.dsl
 
 import org.scalatest.{Matchers, FlatSpec}
 
+import scala.util.Try
+
 /**
  * DSL tests.
  */
@@ -209,8 +211,8 @@ class DslTest extends FlatSpec with Matchers {
       case Stop => Exec("/etc/init.d/tomcat", "stop")
     }
 
-    val startTomcat: Task = tomcat ! Start
-    val stopTomcat: Task = tomcat ! Stop
+    val startTomcat = tomcat ! Start
+    val stopTomcat = tomcat ! Stop
 
     assert(Option(startTomcat).isDefined)
     assert(Option(stopTomcat).isDefined)
@@ -227,19 +229,17 @@ class DslTest extends FlatSpec with Matchers {
       case Stop => Exec(procStop)
     }
 
-    val startShell: Task = program ! Start
+    val startShell = program ! Start
     val startResult = startShell.run
 
-    startResult.isSuccess should be (true)
-    startResult.get.success should be (true)
-    startResult.get.out should be (List("start test program"))
+    startResult._1.isSuccess should be (true)
+    startResult._2 should be (List("start test program"))
 
-    val stopShell: Task = program ! Stop
+    val stopShell = program ! Stop
     val stopResult = stopShell.run
 
-    stopResult.isSuccess should be (true)
-    stopResult.get.success should be (true)
-    stopResult.get.out should be (List("stop test program"))
+    stopResult._1.isSuccess should be (true)
+    stopResult._2 should be (List("stop test program"))
   }
 
   it should "compose processes on localhost" in {
@@ -253,15 +253,14 @@ class DslTest extends FlatSpec with Matchers {
       case Stop => Exec(procStop)
     }
 
-    val startShell: Task = program ! Start
-    val stopShell: Task = program ! Stop
+    val startShell = program ! Start
+    val stopShell = program ! Stop
 
     val composed = startShell andThen stopShell
     val composedResult = composed.run
 
-    composedResult.isSuccess should be (true)
-    composedResult.get.success should be (true)
-    composedResult.get.out should be (List("start test program", "stop test program"))
+    composedResult._1.isSuccess should be (true)
+    composedResult._2 should be (List("start test program", "stop test program"))
   }
 
   it should "compose processes on monadic way" in {
@@ -275,8 +274,8 @@ class DslTest extends FlatSpec with Matchers {
       case Stop => Exec(procStop)
     }
 
-    val startShell: Task = program ! Start
-    val stopShell: Task = program ! Stop
+    val startShell = program ! Start
+    val stopShell = program ! Stop
 
     val composed = for {
       stSh <- startShell
@@ -285,9 +284,8 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = composed.run
 
-    composedResult.isSuccess should be (true)
-    composedResult.get.success should be (true)
-    composedResult.get.out should be (List("start test program", "stop test program"))
+    composedResult._1.isSuccess should be (true)
+    composedResult._2 should be (List("start test program", "stop test program"))
   }
 
   it should "compose processes on monadic way (one task)" in {
@@ -301,7 +299,7 @@ class DslTest extends FlatSpec with Matchers {
       case Stop => Exec(procStop)
     }
 
-    val startShell: Task = program ! Start
+    val startShell = program ! Start
 
     val composed = for {
       stSh <- startShell
@@ -309,9 +307,8 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = composed.run
 
-    composedResult.isSuccess should be (true)
-    composedResult.get.success should be (true)
-    composedResult.get.out should be (List("start test program"))
+    composedResult._1.isSuccess should be (true)
+    composedResult._2 should be (List("start test program"))
   }
 
   it should "compose processes on monadic way (failure)" in {
@@ -325,8 +322,8 @@ class DslTest extends FlatSpec with Matchers {
       case Stop => Exec(procStop)
     }
 
-    val startShellFailure: Task = FailedTask(List(), List("task error"))
-    val stopShell: Task = program ! Stop
+    val startShellFailure = FailedTask(List(), List("task error"))
+    val stopShell = program ! Stop
 
     val composed = for {
       stSh <- startShellFailure
@@ -335,7 +332,7 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = composed.run
 
-    composedResult.isSuccess should be (false)
+    composedResult._1.isSuccess should be (false)
   }
 
   it should "run processes sequentially" in {
@@ -361,16 +358,14 @@ class DslTest extends FlatSpec with Matchers {
 
     val processes: Processes = Processes(List(program1, program2, program3, program4))
 
-    //TODO make this look nicer
-    val startAllProcsSeq: TaskM[TaskResult] = processes ! Start
+    val startAllProcsSeq = processes ! Start
 
     val composedResult = startAllProcsSeq.run
 
-    composedResult.isSuccess should be (true)
-    composedResult.get.success should be (true)
-    composedResult.get.out should be (List("start test program with param: 1", "start test program with param: 2",
+    composedResult._1.isSuccess should be (true)
+    composedResult._2 should be (List("start test program with param: 1", "start test program with param: 2",
       "start test program with param: 3", "start test program with param: 4"))
-    composedResult.get.err should be (empty)
+    composedResult._3 should be (empty)
   }
 
   it should "run processes parallel" in {
@@ -396,16 +391,70 @@ class DslTest extends FlatSpec with Matchers {
 
     val processes: Processes = Processes(List(program1, program2, program3, program4))
 
-    val startAllProcsSeq: Task = processes !! Start
+    val startAllProcsSeq = processes !! Start
 
     val composedResult = startAllProcsSeq.run
 
-    composedResult.isSuccess should be (true)
-    composedResult.get.success should be (true)
-    composedResult.get.out should have size (4)
-    composedResult.get.out should contain allOf ("start test program with param: 1", "start test program with param: 2",
+    composedResult._1.isSuccess should be (true)
+    composedResult._2 should have size (4)
+    composedResult._2 should contain allOf ("start test program with param: 1", "start test program with param: 2",
       "start test program with param: 3", "start test program with param: 4")
-    composedResult.get.err should be (empty)
+    composedResult._3 should be (empty)
+  }
+
+  it should "preserve the execution order" in {
+    implicit val user = LocalUser("me")
+
+    val procStart = "sh " + getClass.getResource("/program-param.sh").getPath
+
+    val program1: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "1")
+    }
+
+    val program2: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "2")
+    }
+
+    val program3: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "3")
+    }
+
+    val program4: Process = "test" on Localhost ~> {
+      case Start => Exec(procStart, "4")
+    }
+
+    val processes: Processes = Processes(List(program1, program2, program3, program4))
+
+    val task1 = new TaskM[Boolean] {
+      override def run: (Try[Boolean], List[String], List[String]) = (program1 ! Start).run
+    }
+
+    val task2 = new TaskM[Boolean] {
+      override def run: (Try[Boolean], List[String], List[String]) = (program2 ! Start).run
+    }
+
+    val task3 = new TaskM[Boolean] {
+      override def run: (Try[Boolean], List[String], List[String]) = (program3 ! Start).run
+    }
+
+    val task4 = new TaskM[Boolean] {
+      override def run: (Try[Boolean], List[String], List[String]) = (program4 ! Start).run
+    }
+
+    val composed = task1 andThen task2 andThen task3 andThen task4
+    val composedResult1 = composed()
+
+    composedResult1._1.isSuccess should be (true)
+    composedResult1._2 should be (List("start test program with param: 1", "start test program with param: 2",
+      "start test program with param: 3", "start test program with param: 4"))
+    composedResult1._3 should be (empty)
+
+    val composedResult2 = composed()
+
+    composedResult2._1.isSuccess should be (true)
+    composedResult2._2 should be (List("start test program with param: 1", "start test program with param: 2",
+      "start test program with param: 3", "start test program with param: 4"))
+    composedResult2._3 should be (empty)
   }
 
 /*

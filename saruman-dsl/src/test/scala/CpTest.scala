@@ -25,25 +25,23 @@ class CpTest extends FlatSpec with Matchers {
     file2create.exists should be (false)
     file2copy.exists should be (false)
 
-    val touchTask: Task = Touch(Localhost, path + name)
+    val touchTask = Touch(Localhost, path + name)
 
     val touchResult = touchTask.run
 
-    touchResult.isSuccess should be (true)
-    touchResult.get.success should be (true)
-    touchResult.get.out should be (empty)
-    touchResult.get.err should be (empty)
+    touchResult._1.isSuccess should be (true)
+    touchResult._2 should be (empty)
+    touchResult._3 should be (empty)
 
     file2create.exists should be (true)
 
-    val copyTask: Task = Cp(Localhost, path + name, path + namecopy)
+    val copyTask = Cp(Localhost, path + name, path + namecopy)
 
     val copyResult = copyTask.run
 
-    copyResult.isSuccess should be (true)
-    copyResult.get.success should be (true)
-    copyResult.get.out should be (empty)
-    copyResult.get.err should be (empty)
+    copyResult._1.isSuccess should be (true)
+    copyResult._2 should be (empty)
+    copyResult._3 should be (empty)
 
     file2copy.exists should be (true)
   }
@@ -67,10 +65,9 @@ class CpTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2copy.exists should be (true)
   }
@@ -93,10 +90,9 @@ class CpTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (true)
-    result.get.success should be (true)
-    result.get.out should be (empty)
-    result.get.err should be (empty)
+    result._1.isSuccess should be (true)
+    result._2 should be (empty)
+    result._3 should be (empty)
 
     file2copy.exists should be (true)
   }
@@ -120,7 +116,7 @@ class CpTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.isSuccess should be (false)
+    result._1.isSuccess should be (false)
 
     file2copy.exists should be (false)
   }

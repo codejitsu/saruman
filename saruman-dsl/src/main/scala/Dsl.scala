@@ -4,7 +4,7 @@ package net.codejitsu.saruman.dsl
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * DSL for saruman scripting.
@@ -101,44 +101,48 @@ object Dsl {
   }
 
   implicit class ProcessOps(val ctx: Process) {
-    def ! (op: Command)(implicit user: User): Task = new ShellTask(ctx, op)
+    def ! (op: Command)(implicit user: User): TaskM[Boolean] = new ShellTask(ctx, op)
   }
 
   implicit class ProcessesOps(val ctx: Processes) {
     import scala.concurrent.duration._
 
-    def ! (op: Command)(implicit user: User): TaskM[TaskResult] = {
+    def ! (op: Command)(implicit user: User): TaskM[Boolean] = {
       val tasks = ctx.procs.map(_ ! op)
 
-      tasks.foldLeft[TaskM[TaskResult]](EmptyTask)((acc, t) => acc flatMap(_ => t))
+      tasks.foldLeft[TaskM[Boolean]](EmptyTask)((acc, t) => acc flatMap(_ => t))
     }
 
-    def !! (op: Command)(implicit user: User, timeout: Duration): Task = {
+    def !! (op: Command)(implicit user: User, timeout: Duration): TaskM[Boolean] = {
       val tasksF = ctx.procs
         .map(_ ! op)
         .map(t => () => Future {
           t.run
         })
 
-      new Task {
-        override def run: Try[TaskResult] = Try {
+      new TaskM[Boolean] {
+        override def run: (Try[Boolean], List[String], List[String]) = {
           val tasksFRes = Future.sequence(tasksF.map(_()))
 
           val result = Await.result(tasksFRes, timeout)
 
-          val resultSuccess = result.map(_.isSuccess).forall(identity)
+          val resultSuccess = result.map(_._1.isSuccess).forall(identity)
 
           val resultOut = result.
-            filter(_.isSuccess).
-            map(_.get.out).
+            filter(_._1.isSuccess).
+            map(_._2).
             foldLeft(List.empty[String])((acc, out) => acc ++ out)
 
           val resultErr = result.
-            filter(_.isSuccess).
-            map(_.get.err).
+            filter(_._1.isSuccess).
+            map(_._3).
             foldLeft(List.empty[String])((acc, err) => acc ++ err)
 
-          TaskResult(resultSuccess, resultOut, resultErr)
+          if (resultSuccess) {
+            (Success(true), resultOut, resultErr)
+          } else {
+            (Failure(new TaskExecutionError(resultErr)), resultOut, resultErr)
+          }
         }
       }
     }
