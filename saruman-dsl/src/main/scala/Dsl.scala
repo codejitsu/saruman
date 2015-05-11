@@ -4,6 +4,7 @@ package net.codejitsu.saruman.dsl
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Try
 
 /**
  * DSL for saruman scripting.
@@ -106,10 +107,10 @@ object Dsl {
   implicit class ProcessesOps(val ctx: Processes) {
     import scala.concurrent.duration._
 
-    def ! (op: Command)(implicit user: User): Task = {
+    def ! (op: Command)(implicit user: User): TaskM[TaskResult] = {
       val tasks = ctx.procs.map(_ ! op)
 
-      tasks.foldLeft[Task](EmptyTask)((acc, t) => acc flatMap(_ => t))
+      tasks.foldLeft[TaskM[TaskResult]](EmptyTask)((acc, t) => acc flatMap(_ => t))
     }
 
     def !! (op: Command)(implicit user: User, timeout: Duration): Task = {
@@ -120,14 +121,22 @@ object Dsl {
         })
 
       new Task {
-        override def run: TaskResult = {
+        override def run: Try[TaskResult] = Try {
           val tasksFRes = Future.sequence(tasksF.map(_()))
 
           val result = Await.result(tasksFRes, timeout)
 
-          val resultSuccess = result.map(_.success).forall(identity)
-          val resultOut = result.map(_.out).foldLeft(List.empty[String])((acc, out) => acc ++ out)
-          val resultErr = result.map(_.err).foldLeft(List.empty[String])((acc, err) => acc ++ err)
+          val resultSuccess = result.map(_.isSuccess).forall(identity)
+
+          val resultOut = result.
+            filter(_.isSuccess).
+            map(_.get.out).
+            foldLeft(List.empty[String])((acc, out) => acc ++ out)
+
+          val resultErr = result.
+            filter(_.isSuccess).
+            map(_.get.err).
+            foldLeft(List.empty[String])((acc, err) => acc ++ err)
 
           TaskResult(resultSuccess, resultOut, resultErr)
         }

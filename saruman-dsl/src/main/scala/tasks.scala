@@ -2,7 +2,9 @@
 
 package net.codejitsu.saruman.dsl
 
-import Dsl._
+import net.codejitsu.saruman.dsl.Dsl._
+
+import scala.util.Try
 
 //All shell specific tasks go here
 
@@ -18,9 +20,9 @@ case class Touch(hosts: Hosts, file: String)(implicit user: User) extends Task {
     case Start => Exec("/usr/bin/touch", file)
   }
 
-  private val touchTask: Task = touch ! Start
+  private val touchTask: TaskM[TaskResult] = touch ! Start
 
-  override def run: TaskResult = touchTask()
+  override def run: Try[TaskResult] = touchTask()
 }
 
 /**
@@ -36,9 +38,9 @@ class Rm(hosts: Hosts, target: String, params: List[String] = Nil)(implicit user
     case Start => Exec("/bin/rm",  params ::: List(target) :_*)
   }
 
-  private val rmTask: Task = rm ! Start
+  private val rmTask: TaskM[TaskResult] = rm ! Start
 
-  override def run: TaskResult = rmTask()
+  override def run: Try[TaskResult] = rmTask()
 }
 
 object Rm {
@@ -66,12 +68,12 @@ case class RmIfExists(hosts: Hosts, target: String)(implicit user: User) extends
  */
 class Cp(hosts: Hosts, source: String, destination: String, params: List[String] = Nil)(implicit user: User) extends Task {
   private val rsync: Processes = "rsync" on hosts ~> {
-    case Start => Exec("/usr/bin/rsync", source :: destination :: params :_*)
+    case Start => Exec("/usr/bin/rsync", params ::: List(source, destination) :_*)
   }
 
-  private val rsyncTask: Task = rsync ! Start
+  private val rsyncTask: TaskM[TaskResult] = rsync ! Start
 
-  override def run: TaskResult = rsyncTask()
+  override def run: Try[TaskResult] = rsyncTask()
 }
 
 object Cp {
@@ -80,4 +82,27 @@ object Cp {
 
   def apply(hosts: Hosts, source: String, destination: String)(implicit user: User): Cp =
     new Cp(hosts, source, destination)(user)
+}
+
+/**
+ * Upload file to remote host(s).
+ *
+ * @param source source file to upload
+ * @param target destination hosts
+ * @param destinationPath path on destination hosts
+ * @param user user
+ */
+case class Upload(source: String, target: Hosts, destinationPath: String)(implicit user: LocalUser) extends Task {
+  private lazy val uploadTasks = target.hosts map {
+    case h: Host =>
+      val up: Process = "rsync" on Localhost ~> {
+        case Start => Exec("/usr/bin/rsync", "-avzhe", "ssh", source, s"${h.toString()}:$destinationPath")
+      }
+
+      up ! Start
+  }
+
+  private lazy val uploadTask: TaskM[TaskResult] = uploadTasks.foldLeft[TaskM[TaskResult]](EmptyTask)((acc, t) => acc flatMap (_ => t))
+
+  override def run: Try[TaskResult] = uploadTask()
 }

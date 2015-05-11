@@ -230,14 +230,16 @@ class DslTest extends FlatSpec with Matchers {
     val startShell: Task = program ! Start
     val startResult = startShell.run
 
-    startResult.success should be (true)
-    startResult.out should be (List("start test program"))
+    startResult.isSuccess should be (true)
+    startResult.get.success should be (true)
+    startResult.get.out should be (List("start test program"))
 
     val stopShell: Task = program ! Stop
     val stopResult = stopShell.run
 
-    stopResult.success should be (true)
-    stopResult.out should be (List("stop test program"))
+    stopResult.isSuccess should be (true)
+    stopResult.get.success should be (true)
+    stopResult.get.out should be (List("stop test program"))
   }
 
   it should "compose processes on localhost" in {
@@ -257,8 +259,9 @@ class DslTest extends FlatSpec with Matchers {
     val composed = startShell andThen stopShell
     val composedResult = composed.run
 
-    composedResult.success should be (true)
-    composedResult.out should be (List("start test program", "stop test program"))
+    composedResult.isSuccess should be (true)
+    composedResult.get.success should be (true)
+    composedResult.get.out should be (List("start test program", "stop test program"))
   }
 
   it should "compose processes on monadic way" in {
@@ -282,8 +285,9 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = composed.run
 
-    composedResult.success should be (true)
-    composedResult.out should be (List("start test program", "stop test program"))
+    composedResult.isSuccess should be (true)
+    composedResult.get.success should be (true)
+    composedResult.get.out should be (List("start test program", "stop test program"))
   }
 
   it should "compose processes on monadic way (one task)" in {
@@ -305,8 +309,9 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = composed.run
 
-    composedResult.success should be (true)
-    composedResult.out should be (List("start test program"))
+    composedResult.isSuccess should be (true)
+    composedResult.get.success should be (true)
+    composedResult.get.out should be (List("start test program"))
   }
 
   it should "compose processes on monadic way (failure)" in {
@@ -330,9 +335,7 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = composed.run
 
-    composedResult.success should be (false)
-    composedResult.out should be (empty)
-    composedResult.err should be (List("task error"))
+    composedResult.isSuccess should be (false)
   }
 
   it should "run processes sequentially" in {
@@ -358,14 +361,16 @@ class DslTest extends FlatSpec with Matchers {
 
     val processes: Processes = Processes(List(program1, program2, program3, program4))
 
-    val startAllProcsSeq: Task = processes ! Start
+    //TODO make this look nicer
+    val startAllProcsSeq: TaskM[TaskResult] = processes ! Start
 
     val composedResult = startAllProcsSeq.run
 
-    composedResult.success should be (true)
-    composedResult.out should be (List("start test program with param: 1", "start test program with param: 2",
+    composedResult.isSuccess should be (true)
+    composedResult.get.success should be (true)
+    composedResult.get.out should be (List("start test program with param: 1", "start test program with param: 2",
       "start test program with param: 3", "start test program with param: 4"))
-    composedResult.err should be (empty)
+    composedResult.get.err should be (empty)
   }
 
   it should "run processes parallel" in {
@@ -395,11 +400,12 @@ class DslTest extends FlatSpec with Matchers {
 
     val composedResult = startAllProcsSeq.run
 
-    composedResult.success should be (true)
-    composedResult.out should have size (4)
-    composedResult.out should contain allOf ("start test program with param: 1", "start test program with param: 2",
+    composedResult.isSuccess should be (true)
+    composedResult.get.success should be (true)
+    composedResult.get.out should have size (4)
+    composedResult.get.out should contain allOf ("start test program with param: 1", "start test program with param: 2",
       "start test program with param: 3", "start test program with param: 4")
-    composedResult.err should be (empty)
+    composedResult.get.err should be (empty)
   }
 
 /*

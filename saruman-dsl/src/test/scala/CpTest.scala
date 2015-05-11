@@ -29,9 +29,10 @@ class CpTest extends FlatSpec with Matchers {
 
     val touchResult = touchTask.run
 
-    touchResult.success should be (true)
-    touchResult.out should be (empty)
-    touchResult.err should be (empty)
+    touchResult.isSuccess should be (true)
+    touchResult.get.success should be (true)
+    touchResult.get.out should be (empty)
+    touchResult.get.err should be (empty)
 
     file2create.exists should be (true)
 
@@ -39,9 +40,10 @@ class CpTest extends FlatSpec with Matchers {
 
     val copyResult = copyTask.run
 
-    copyResult.success should be (true)
-    copyResult.out should be (empty)
-    copyResult.err should be (empty)
+    copyResult.isSuccess should be (true)
+    copyResult.get.success should be (true)
+    copyResult.get.out should be (empty)
+    copyResult.get.err should be (empty)
 
     file2copy.exists should be (true)
   }
@@ -65,9 +67,10 @@ class CpTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.success should be (true)
-    result.out should be (empty)
-    result.err should be (empty)
+    result.isSuccess should be (true)
+    result.get.success should be (true)
+    result.get.out should be (empty)
+    result.get.err should be (empty)
 
     file2copy.exists should be (true)
   }
@@ -90,14 +93,15 @@ class CpTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.success should be (true)
-    result.out should be (empty)
-    result.err should be (empty)
+    result.isSuccess should be (true)
+    result.get.success should be (true)
+    result.get.out should be (empty)
+    result.get.err should be (empty)
 
     file2copy.exists should be (true)
   }
 
-  it should "return error if file dont exists" in {
+  it should "return error if file don't exists" in {
     implicit val user = LocalUser("me")
 
     val path = getClass.getResource("/program-param.sh").getPath.split("/").init.mkString("/") + "/"
@@ -116,9 +120,7 @@ class CpTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.success should be (false)
-    result.out should be (empty)
-    result.err should not be (empty)
+    result.isSuccess should be (false)
 
     file2copy.exists should be (false)
   }

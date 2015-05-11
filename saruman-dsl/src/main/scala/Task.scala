@@ -2,68 +2,77 @@
 
 package net.codejitsu.saruman.dsl
 
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
-/**
- * Task.
- */
+class TaskExecutionError(err: List[String]) extends Exception(err.mkString)
+
 case class TaskResult(success: Boolean, out: List[String], err: List[String])
 
-trait Do[+T] {
-  def run: T
-  def apply(): T
-}
-
-trait Task extends Do[TaskResult] {
+trait TaskM[+R] {
   self =>
 
-  def run: TaskResult
+  def run: Try[R]
 
-  def apply(): TaskResult = run
+  def apply(): Try[R] = run
 
-  def andThen(task: Task): Task = this flatMap (_ => task)
+  def andThen[T](task: TaskM[T]): TaskM[T] = this flatMap (_ => task)
 
-  def map[U](f: Unit => U): Task = new Task {
-    override def run: TaskResult = {
-      val res = self()
-      f(())
-      res
+  def map[U](f: R => U): TaskM[U] = new TaskM[U] {
+    override def run: Try[U] = {
+      val selfRes = self()
+
+      //println(s"map: ${self.getClass.getName}: " + selfRes)
+
+      selfRes.map(f)
     }
   }
 
-  def flatMap(f: TaskResult => Task): Task = {
-    val selfRes = self()
+  def flatMap[T](f: R => TaskM[T]): TaskM[T] = new TaskM[T] {
+    override def run: Try[T] = {
+      val selfRes = self()
 
-    if (selfRes.success) {
-      new Task {
-        override def run: TaskResult = {
-          if (selfRes.success) {
-            val res = f(selfRes)()
-            TaskResult(res.success, selfRes.out ++ res.out, selfRes.err ++ res.err)
-          } else {
-            selfRes
-          }
-        }
+      //println(s"flatMap: ${self.getClass.getName}: " + selfRes)
+
+      selfRes match {
+        case Success(r) => f(r).run
+        case Failure(e) => Failure(e)
       }
-    } else {
-      FailedTask(selfRes.out, selfRes.err)
     }
   }
+//    val selfRes = self()
+//
+//    if (selfRes.isSuccess) {
+//      new Task {
+//        override def run: TaskResult = {
+//          if (selfRes.success) {
+//            val res = f(selfRes)()
+//            TaskResult(res.success, selfRes.out ++ res.out, selfRes.err ++ res.err)
+//          } else {
+//            selfRes
+//          }
+//        }
+//      }
+//    } else {
+//      FailedTask(selfRes.out, selfRes.err)
+//    }
 }
 
+trait Task extends TaskM[TaskResult]
+
 case class FailedTask(out: List[String], err: List[String]) extends Task {
-  override def run: TaskResult = TaskResult(false, out, err)
+  override def run: Try[TaskResult] = Failure(new IllegalStateException)
 }
 
 case object EmptyTask extends Task {
-  override def run: TaskResult = TaskResult(true, Nil, Nil)
+  override def run: Try[TaskResult] = Success(TaskResult(true, Nil, Nil))
 }
 
 class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) extends Task {
   import scala.collection.mutable.ListBuffer
   import scala.sys.process._
 
-  override def run: TaskResult = op match {
+  override def run: Try[TaskResult] = op match {
     case Start => execute(ctx.startCmd)
 
     case Stop => execute(ctx.stopCmd)
@@ -142,8 +151,15 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
     TaskResult(result == 0, out.toList, err.toList)
   }
 
-  private def execute(cmd: CommandLine): TaskResult = ctx.host match {
-    case Localhost => executeLocal(cmd)
-    case remoteHost: Host => executeRemoteSsh(remoteHost, cmd)
+  private def execute(cmd: CommandLine): Try[TaskResult] = {
+    val res = ctx.host match {
+      case Localhost => executeLocal(cmd)
+      case remoteHost: Host => executeRemoteSsh(remoteHost, cmd)
+    }
+
+    res match {
+      case TaskResult(true, _, _) => Success(res)
+      case TaskResult(false, _, _) => Failure(new TaskExecutionError(res.err))
+    }
   }
 }

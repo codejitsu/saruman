@@ -24,9 +24,10 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val touchResult = touchTask.run
 
-    touchResult.success should be (true)
-    touchResult.out should be (empty)
-    touchResult.err should be (empty)
+    touchResult.isSuccess should be (true)
+    touchResult.get.success should be (true)
+    touchResult.get.out should be (empty)
+    touchResult.get.err should be (empty)
 
     file2create.exists should be (true)
 
@@ -34,11 +35,10 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val rmResult = rmTask.run
 
-    println(rmResult)
-
-    rmResult.success should be (true)
-    rmResult.out should be (empty)
-    rmResult.err should be (empty)
+    rmResult.isSuccess should be (true)
+    rmResult.get.success should be (true)
+    rmResult.get.out should be (empty)
+    rmResult.get.err should be (empty)
 
     file2create.exists should be (false)
   }
@@ -58,9 +58,10 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.success should be (true)
-    result.out should be (empty)
-    result.err should be (empty)
+    result.isSuccess should be (true)
+    result.get.success should be (true)
+    result.get.out should be (empty)
+    result.get.err should be (empty)
 
     file2create.exists should be (false)
   }
@@ -79,9 +80,10 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.success should be (true)
-    result.out should be (empty)
-    result.err should be (empty)
+    result.isSuccess should be (true)
+    result.get.success should be (true)
+    result.get.out should be (empty)
+    result.get.err should be (empty)
 
     file2create.exists should be (false)
   }
@@ -102,9 +104,10 @@ class RmIfExistsTest extends FlatSpec with Matchers {
 
     val result = task.run
 
-    result.success should be (true)
-    result.out should be (empty)
-    result.err should be (empty)
+    result.isSuccess should be (true)
+    result.get.success should be (true)
+    result.get.out should be (empty)
+    result.get.err should be (empty)
 
     file2create.exists should be (false)
   }
