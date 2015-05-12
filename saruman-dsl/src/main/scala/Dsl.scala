@@ -21,12 +21,38 @@ object Dsl {
       Hosts(all.toList)
     }
 
-    def ~(parts: Product): Hosts = {
+    def ~ (parts: Product): Hosts = {
       val flatProduct = for {
         i <- 0 until parts.productArity
       } yield parts.productElement(i).toString
 
       this ~ flatProduct
+    }
+
+    def % (part: String): Host = Host(List(HostPart(ctx + part)))
+
+    def %[P](parts: IndexedSeq[P]): Hosts = {
+      val all = for {
+        y <- parts
+      } yield Host(List(HostPart(ctx + y.toString)))
+
+      Hosts(all.toList)
+    }
+
+    def % (parts: Product): Hosts = {
+      val flatProduct = for {
+        i <- 0 until parts.productArity
+      } yield parts.productElement(i).toString
+
+      this % flatProduct
+    }
+
+    def % (parts: Hosts): Hosts = {
+      val flatProduct = for {
+        h <- parts.hosts
+      } yield h.toString
+
+      this % flatProduct.toVector
     }
 
     def on (ps: ProcessStep): Process = Process(ctx, ps.host, ps.proc)

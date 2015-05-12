@@ -87,6 +87,54 @@ class DslTest extends FlatSpec with Matchers {
     all should be (List("abc.my.test.host.system.1", "100.my.test.host.system.1", "z.my.test.host.system.1"))
   }
 
+  it should "allow to compose tuples and strings with %" in {
+    val hosts: Hosts = "host" % (("abc", 100, 'z')) ~ "my" ~ "test" ~ "host" ~ "system.1"
+
+    val all = hosts.hosts map (_.toString())
+
+    all should be (List("hostabc.my.test.host.system.1", "host100.my.test.host.system.1", "hostz.my.test.host.system.1"))
+  }
+
+  it should "allow to compose tuples and strings with % (2)" in {
+    val hosts: Hosts = "host" % (("abc", 100, 'z')) % "my" ~ "test" ~ "host" ~ "system.1"
+
+    val all = hosts.hosts map (_.toString())
+
+    all should be (List("hostabcmy.test.host.system.1", "host100my.test.host.system.1", "hostzmy.test.host.system.1"))
+  }
+
+  it should "allow to compose tuples and strings with % (3)" in {
+    val hosts: Hosts = "host" % (("abc", 100, 'z'))
+
+    val all = hosts.hosts map (_.toString())
+
+    all should be (List("hostabc", "host100", "hostz"))
+  }
+
+  it should "allow to compose ranges and strings with %" in {
+    val hosts: Hosts = "host" % (1 to 3) ~ "my" ~ "test" ~ "host" ~ "system.1"
+
+    val all = hosts.hosts map (_.toString())
+
+    all should be (List("host1.my.test.host.system.1", "host2.my.test.host.system.1", "host3.my.test.host.system.1"))
+  }
+
+  it should "allow to compose ranges and strings with ~ (2)" in {
+    val hosts: Hosts = "host" ~ (1 to 3) ~ "my" ~ "test" ~ "host" ~ "system.1"
+
+    val all = hosts.hosts map (_.toString())
+
+    all should be (List("host.1.my.test.host.system.1", "host.2.my.test.host.system.1", "host.3.my.test.host.system.1"))
+  }
+
+  it should "allow to compose ranges and strings with % (2)" in {
+    val hosts: Hosts = "host" % (1 to 3) % "my" ~ "test" ~ "host" ~ "system.1"
+
+    val all = hosts.hosts map (_.toString())
+
+    all should be (List("host1my.test.host.system.1", "host2my.test.host.system.1", "host3my.test.host.system.1"))
+  }
+
   it should "allow to define process on host" in {
     val host = "my" ~ "test" ~ "host"
 
