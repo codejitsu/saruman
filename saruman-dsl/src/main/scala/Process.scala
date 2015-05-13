@@ -38,7 +38,7 @@ case object NoExec extends CommandLine {
   override val args: Array[String] = Array.empty[String]
 }
 
-case class Process(name: String, host: Host, proc: PartialFunction[Command, CommandLine], verbose: Boolean = false) {
+case class Process(name: String, host: Host, proc: PartialFunction[Command, CommandLine]) {
   def startCmd: CommandLine = {
     if (proc.isDefinedAt(Start)) {
       proc(Start)
@@ -54,14 +54,10 @@ case class Process(name: String, host: Host, proc: PartialFunction[Command, Comm
       NoExec
     }
   }
-
-  def withStdOut: Process = copy(verbose = true)
 }
 
 case class ProcessStep(proc: PartialFunction[Command, CommandLine], host: Host)
 
 case class ProcessSteps(steps: collection.immutable.Seq[ProcessStep])
 
-case class Processes(procs: collection.immutable.Seq[Process]) {
-  def withStdOut: Processes = copy(procs = procs.map(_.withStdOut))
-}
+case class Processes(procs: collection.immutable.Seq[Process])

@@ -24,7 +24,7 @@ class RmTest extends FlatSpec with Matchers {
 
     val touchTask: TaskM[Boolean] = Touch(Localhost, path + name)
 
-    val touchResult = touchTask.run
+    val touchResult = touchTask.run()
 
     touchResult._1.isSuccess should be (true)
     touchResult._2 should be (empty)
@@ -34,7 +34,7 @@ class RmTest extends FlatSpec with Matchers {
 
     val rmTask: TaskM[Boolean] = Rm(Localhost, path + name)
 
-    val rmResult = rmTask.run
+    val rmResult = rmTask.run()
 
     rmResult._1.isSuccess should be (true)
     rmResult._2 should be (empty)
@@ -57,7 +57,7 @@ class RmTest extends FlatSpec with Matchers {
       rr <- Rm(Localhost, path + name)
     } yield rr
 
-    val result = task.run
+    val result = task.run()
 
     result._1.isSuccess should be (true)
     result._2 should be (empty)
@@ -79,7 +79,7 @@ class RmTest extends FlatSpec with Matchers {
       Touch(Localhost, path + name) andThen
       Rm(Localhost, path + name)
 
-    val result = task.run
+    val result = task.run()
 
     result._1.isSuccess should be (true)
     result._2 should be (empty)
@@ -103,7 +103,7 @@ class RmTest extends FlatSpec with Matchers {
       rr2 <- Rm(Localhost, path + name)
     } yield rr2
 
-    val result = task.run
+    val result = task.run()
 
     result._1.isSuccess should be (false)
     file2create.exists should be (false)

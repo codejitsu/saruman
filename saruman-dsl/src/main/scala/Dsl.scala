@@ -2,6 +2,8 @@
 
 package net.codejitsu.saruman.dsl
 
+import net.codejitsu.saruman.dsl.VerbosityLevel._
+
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
@@ -143,11 +145,11 @@ object Dsl {
       val tasksF = ctx.procs
         .map(_ ! op)
         .map(t => () => Future {
-          t.run
+          t.run()
         })
 
       new TaskM[Boolean] {
-        override def run: (Try[Boolean], List[String], List[String]) = {
+        override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = {
           val tasksFRes = Future.sequence(tasksF.map(_()))
 
           val result = Await.result(tasksFRes, timeout)

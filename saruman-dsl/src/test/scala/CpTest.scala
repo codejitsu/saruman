@@ -27,7 +27,7 @@ class CpTest extends FlatSpec with Matchers {
 
     val touchTask = Touch(Localhost, path + name)
 
-    val touchResult = touchTask.run
+    val touchResult = touchTask.run()
 
     touchResult._1.isSuccess should be (true)
     touchResult._2 should be (empty)
@@ -37,7 +37,7 @@ class CpTest extends FlatSpec with Matchers {
 
     val copyTask = Cp(Localhost, path + name, path + namecopy)
 
-    val copyResult = copyTask.run
+    val copyResult = copyTask.run()
 
     copyResult._1.isSuccess should be (true)
     copyResult._2 should be (empty)
@@ -63,7 +63,7 @@ class CpTest extends FlatSpec with Matchers {
       cr <- Cp(Localhost, path + name, path + namecopy)
     } yield cr
 
-    val result = task.run
+    val result = task.run()
 
     result._1.isSuccess should be (true)
     result._2 should be (empty)
@@ -88,7 +88,7 @@ class CpTest extends FlatSpec with Matchers {
       Touch(Localhost, path + name) andThen
       Cp(Localhost, path + name, path + namecopy)
 
-    val result = task.run
+    val result = task.run()
 
     result._1.isSuccess should be (true)
     result._2 should be (empty)
@@ -114,7 +114,7 @@ class CpTest extends FlatSpec with Matchers {
       cp <- Cp(Localhost, path + name + "1", path + namecopy)
     } yield cp
 
-    val result = task.run
+    val result = task.run()
 
     result._1.isSuccess should be (false)
 

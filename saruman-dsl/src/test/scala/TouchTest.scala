@@ -25,7 +25,7 @@ class TouchTest extends FlatSpec with Matchers {
 
     val touchTask: TaskM[Boolean] = Touch(Localhost, path + name)
 
-    val touchResult = touchTask.run
+    val touchResult = touchTask.run()
 
     touchResult._1.isSuccess should be (true)
     touchResult._2 should be (empty)

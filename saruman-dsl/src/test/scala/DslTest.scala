@@ -1,5 +1,6 @@
 package net.codejitsu.saruman.dsl
 
+import net.codejitsu.saruman.dsl.VerbosityLevel._
 import org.scalatest.{Matchers, FlatSpec}
 
 import scala.util.Try
@@ -278,13 +279,13 @@ class DslTest extends FlatSpec with Matchers {
     }
 
     val startShell = program ! Start
-    val startResult = startShell.run
+    val startResult = startShell.run()
 
     startResult._1.isSuccess should be (true)
     startResult._2 should be (List("start test program"))
 
     val stopShell = program ! Stop
-    val stopResult = stopShell.run
+    val stopResult = stopShell.run()
 
     stopResult._1.isSuccess should be (true)
     stopResult._2 should be (List("stop test program"))
@@ -305,7 +306,7 @@ class DslTest extends FlatSpec with Matchers {
     val stopShell = program ! Stop
 
     val composed = startShell andThen stopShell
-    val composedResult = composed.run
+    val composedResult = composed.run()
 
     composedResult._1.isSuccess should be (true)
     composedResult._2 should be (List("start test program", "stop test program"))
@@ -330,7 +331,7 @@ class DslTest extends FlatSpec with Matchers {
       stopSh <- stopShell
     } yield stopSh
 
-    val composedResult = composed.run
+    val composedResult = composed.run()
 
     composedResult._1.isSuccess should be (true)
     composedResult._2 should be (List("start test program", "stop test program"))
@@ -353,7 +354,7 @@ class DslTest extends FlatSpec with Matchers {
       stSh <- startShell
     } yield stSh
 
-    val composedResult = composed.run
+    val composedResult = composed.run()
 
     composedResult._1.isSuccess should be (true)
     composedResult._2 should be (List("start test program"))
@@ -378,7 +379,7 @@ class DslTest extends FlatSpec with Matchers {
       stopSh <- stopShell
     } yield stopSh
 
-    val composedResult = composed.run
+    val composedResult = composed.run()
 
     composedResult._1.isSuccess should be (false)
   }
@@ -408,7 +409,7 @@ class DslTest extends FlatSpec with Matchers {
 
     val startAllProcsSeq = processes ! Start
 
-    val composedResult = startAllProcsSeq.run
+    val composedResult = startAllProcsSeq.run()
 
     composedResult._1.isSuccess should be (true)
     composedResult._2 should be (List("start test program with param: 1", "start test program with param: 2",
@@ -441,7 +442,7 @@ class DslTest extends FlatSpec with Matchers {
 
     val startAllProcsSeq = processes !! Start
 
-    val composedResult = startAllProcsSeq.run
+    val composedResult = startAllProcsSeq.run()
 
     composedResult._1.isSuccess should be (true)
     composedResult._2 should have size (4)
@@ -471,22 +472,20 @@ class DslTest extends FlatSpec with Matchers {
       case Start => Exec(procStart, "4")
     }
 
-    val processes: Processes = Processes(List(program1, program2, program3, program4))
-
     val task1 = new TaskM[Boolean] {
-      override def run: (Try[Boolean], List[String], List[String]) = (program1 ! Start).run
+      override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = (program1 ! Start).run()
     }
 
     val task2 = new TaskM[Boolean] {
-      override def run: (Try[Boolean], List[String], List[String]) = (program2 ! Start).run
+      override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = (program2 ! Start).run()
     }
 
     val task3 = new TaskM[Boolean] {
-      override def run: (Try[Boolean], List[String], List[String]) = (program3 ! Start).run
+      override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = (program3 ! Start).run()
     }
 
     val task4 = new TaskM[Boolean] {
-      override def run: (Try[Boolean], List[String], List[String]) = (program4 ! Start).run
+      override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = (program4 ! Start).run()
     }
 
     val composed = task1 andThen task2 andThen task3 andThen task4
