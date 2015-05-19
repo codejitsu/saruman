@@ -507,30 +507,26 @@ class DslTest extends FlatSpec with Matchers {
 /*
   def deploymentTomcat(): Unit = {
     val hosts = "my.dev.test-host" ~ (1 to 5)
-
-    val tomcats = "tomcat" on hosts ~> {
-      case Start => Exec("/etc/init.d/tomcat", "start")
-      case Stop => Exec("/etc/init.d/tomcat", "stop")
-    }
-
     val file = "/tmp/test.war"
 
     val deployOnTomcat = for {
       _ <- RmIfExists(hosts)(user.home / "test.war")
       _ <- Upload(hosts)(file)
-      _ <- tomcats !! Stop
+      _ <- StopTomcat(hosts, sudo = true)
       _ <- Mv(hosts)(user.home / "test.war")("/tomcat/webapp/")
-      _ <- tomcats !! Start
-      deployed <- CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
+      _ <- StartTomcat(hosts, sudo = true)
+      _ <- Delay(30 seconds)
+      deployed <- HealthCheck(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
     } yield deployed
 
     val deployOnTomcat2 =
         RmIfExists(hosts)(user.home / "test.war") andThen
         Upload(hosts)(file) andThen
-        (tomcats !! Stop) andThen
+        StopTomcat(hosts, sudo = true) andThen
         Mv(hosts)(user.home / "test.war")("/tomcat/webapp/") andThen
-        (tomcats !! Start)  andThen
-        CheckUrl(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
+        StartTomcat(hosts, sudo = true) andThen
+        Delay(30 seconds) andThen
+        HealthCheck(hosts, 8080)("/webapp/health", 2 * 60 * 1000, 5)
   }
   */
 }

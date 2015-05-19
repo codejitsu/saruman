@@ -14,7 +14,26 @@ object VerbosityLevel extends Enumeration {
 
 import VerbosityLevel._
 
-trait TaskM[+R] {
+trait Description {
+  def description: String = ""
+}
+
+trait UsingSudo[T <: UsingSudo[T]] {
+  def sudo: T
+}
+
+trait UsingParallelExecution[T <: UsingParallelExecution[T]] {
+  import scala.concurrent.duration._
+  implicit val timeout = 90 seconds
+
+  def par: T
+}
+
+trait DistributedProcess {
+  val processes: Processes
+}
+
+trait TaskM[+R] extends Description {
   self =>
 
   def run(verbose: VerbosityLevel = No): (Try[R], List[String], List[String])
@@ -22,8 +41,6 @@ trait TaskM[+R] {
   def apply(): (Try[R], List[String], List[String]) = run()
 
   def andThen[T >: R](task: TaskM[T]): TaskM[T] = this flatMap (_ => task)
-
-  def description: String = ""
 
   def map[U](f: R => U): TaskM[U] = new TaskM[U] {
     override def run(verbose: VerbosityLevel = No): (Try[U], List[String], List[String]) = {
@@ -76,15 +93,31 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
     }
   }
 
+  private def mkCommandLog(cmd: CommandLine, verbose: VerbosityLevel): String = verbose match {
+    case Verbose => s"${op.cmd} ${ctx.name} on '${ctx.host.toString}'"
+    case Full => s"$op '${ctx.name}' (${cmd.cmd}) on '${ctx.host.toString}'"
+    case _ => ""
+  }
+
+  private def printCommandLog(msg: String, color: String, statusMsg: String, commandLine: List[String],
+                              verbose: VerbosityLevel): Unit = verbose match {
+    case Verbose | Full =>
+      println(s"$msg [$color $statusMsg ${Console.WHITE}]")
+
+      verbose match {
+        case Full => println(s"SSH: ${commandLine.mkString(" ")}")
+        case _ =>
+      }
+
+    case _ =>
+  }
+
   private def executeLocal(cmd: CommandLine, verbose: VerbosityLevel): (Try[Boolean], List[String], List[String]) = user match {
     case lu @ LocalUser(_) =>
       val out = ListBuffer[String]()
       val err = ListBuffer[String]()
 
-      verbose match {
-        case Full => println(s"$op '${ctx.name}' (${cmd.cmd}) on '${ctx.host.toString}'")
-        case _ =>
-      }
+      val msg = mkCommandLog(cmd, verbose)
 
       val result = cmd match {
         case SudoExec(_, _*) =>
@@ -98,12 +131,29 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
       }
 
       if (result == 0) {
+        verbose match {
+          case Verbose | Full => println(s"$msg [${Console.GREEN} ok ${Console.WHITE}]")
+          case _ =>
+        }
+
         (Success(true), out.toList, err.toList)
       } else {
+        verbose match {
+          case Verbose | Full => println(s"$msg [${Console.RED} failed ${Console.WHITE}]")
+          case _ =>
+        }
+
         (Failure(new TaskExecutionError(err.toList)), out.toList, err.toList)
       }
 
     case _ =>
+      verbose match {
+        case Verbose | Full =>
+          val msg = mkCommandLog(cmd, verbose)
+          println(s"$msg [${Console.RED} failed ${Console.WHITE}]")
+        case _ =>
+      }
+
       (Failure(new TaskExecutionError(List("Please provide localhost credentials."))), Nil,
         List("Please provide localhost credentials."))
   }
@@ -129,10 +179,7 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
     val out = ListBuffer[String]()
     val err = ListBuffer[String]()
 
-    verbose match {
-      case Full => println(s"$op '${ctx.name}' (${cmd.cmd}) on '${ctx.host.toString}'")
-      case _ =>
-    }
+    val msg = mkCommandLog(cmd, verbose)
 
     def remoteCommandLine(user: User): List[String] = try {
       user match {
@@ -147,17 +194,22 @@ class ShellTask(val ctx: Process, val op: Command)(implicit val user: User) exte
 
     val commandLine = remoteCommandLine(user)
 
-    verbose match {
-      case Full => println(s"SSH: ${commandLine.mkString(" ")}")
-      case _ =>
-    }
-
     val proc = commandLine run (ProcessLogger(doOut(out, verbose)(_), doOut(err, verbose)(_)))
     val result = proc.exitValue
 
+    val statusMsg = if (result == 0) {
+      "ok"
+    } else {
+      "failed"
+    }
+
     if (result == 0) {
+      printCommandLog(msg, Console.GREEN, statusMsg, commandLine, verbose)
+
       (Success(true), out.toList, err.toList)
     } else {
+      printCommandLog(msg, Console.RED, statusMsg, commandLine, verbose)
+
       (Failure(new TaskExecutionError(err.toList)), out.toList, err.toList)
     }
   }

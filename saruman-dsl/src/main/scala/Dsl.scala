@@ -142,14 +142,14 @@ object Dsl {
     }
 
     def !! (op: Command)(implicit user: User, timeout: Duration): TaskM[Boolean] = {
-      val tasksF = ctx.procs
-        .map(_ ! op)
-        .map(t => () => Future {
-          t.run()
-        })
-
       new TaskM[Boolean] {
         override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = {
+          val tasksF = ctx.procs
+            .map(_ ! op)
+            .map(t => () => Future {
+              t.run(verbose)
+            })
+
           val tasksFRes = Future.sequence(tasksF.map(_()))
 
           val result = Await.result(tasksFRes, timeout)
@@ -177,7 +177,22 @@ object Dsl {
   }
 
   object Sudo {
+    case class ParHandler() {
+      def ~[T <: UsingSudo[T] with UsingParallelExecution[T]](task: T): T = task.sudo.par
+    }
+
     def ~ (exec: Exec): SudoExec = SudoExec(exec.path, exec.params :_*)
+    def ~[T <: UsingSudo[T]](task: T): T = task.sudo
+    def ~ (p: Par.type): ParHandler = ParHandler()
+  }
+
+  object Par {
+    case class SudoHandler() {
+      def ~[T <: UsingSudo[T] with UsingParallelExecution[T]](task: T): T = task.par.sudo
+    }
+
+    def ~[T <: UsingParallelExecution[T]](task: T): T = task.par
+    def ~ (s: Sudo.type): SudoHandler = SudoHandler()
   }
 
   implicit def host2Hosts(host: Host): Hosts = Hosts(List(host))
