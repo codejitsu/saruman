@@ -2,11 +2,15 @@
 
 package net.codejitsu.saruman.dsl
 
+import java.util.concurrent.TimeoutException
+
 import net.codejitsu.saruman.dsl.Dsl._
 import net.codejitsu.saruman.dsl.VerbosityLevel.VerbosityLevel
 import VerbosityLevel._
 
-import scala.util.Try
+import scala.concurrent.{Future, Await, Promise}
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
 
 //All shell specific tasks go here
 
@@ -74,7 +78,7 @@ case class Touch(hosts: Hosts, target: String,
  * @param target file/dir to remove
  * @param params command flags
  * @param usingSudo true, if task have to be started with sudo
- * @param usingPar true, if parallel ececution required.
+ * @param usingPar true, if parallel execution required.
  * @param user user
  */
 class Rm(hosts: Hosts, target: String, params: List[String] = Nil,
@@ -153,6 +157,83 @@ object Rm {
 case class RmIfExists(hosts: Hosts, target: String, usingSudo: Boolean = false,
                       usingPar: Boolean = false)(implicit user: User) extends Rm(hosts, target, List("-f"), usingSudo, usingPar)(user) {
   override def description: String = "remove file(s) (if exists)"
+}
+
+/**
+ * Move file / dir task.
+ *
+ * @param hosts target hosts
+ * @param source source file to move (rename)
+ * @param destination destination file/dir
+ * @param params command flags
+ * @param usingSudo true, if task have to be started with sudo
+ * @param usingPar true, if parallel execution required.
+ * @param user user
+ */
+class Mv(hosts: Hosts, source: String, destination: String, params: List[String] = Nil,
+         usingSudo: Boolean = false, usingPar: Boolean = false)(implicit user: User)
+  extends TaskM[Boolean] with UsingSudo[Mv] with UsingParallelExecution[Mv] {
+
+  private val mv: Processes = "mv" on hosts ~> {
+    case Start => if(usingSudo) {
+      Sudo ~ Exec("/bin/mv",  params ::: List(source, destination) :_*)
+    } else {
+      Exec("/bin/mv",  params ::: List(source, destination) :_*)
+    }
+  }
+
+  private val mvTask: TaskM[Boolean] = if(usingPar) {
+    mv !! Start
+  } else {
+    mv ! Start
+  }
+
+  override def description: String = "move file(s)"
+
+  override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = {
+    verbose match {
+      case Verbose | Full =>
+        val h = if (hosts.hosts.nonEmpty) {
+          "(and " + (hosts.hosts.size - 1) + " other hosts)"
+        } else {
+          ""
+        }
+
+        val withSudo = if(usingSudo) {
+          s"${Console.GREEN}sudo${Console.WHITE}"
+        } else {
+          ""
+        }
+
+        val withPar = if(usingPar) {
+          s"${Console.GREEN}!!${Console.WHITE}"
+        } else {
+          ""
+        }
+
+        println(s"[ ${Console.YELLOW}*${Console.WHITE} $withSudo $withPar] $description '${source}' -> '${destination}' on ${hosts.hosts.head.toString()} $h")
+      case _ =>
+    }
+
+    val result = mvTask.run(verbose)
+
+    verbose match {
+      case Verbose | Full => println("--------------------------------------------------------------")
+      case _ =>
+    }
+
+    result
+  }
+
+  override def sudo: Mv = Mv(hosts, source, destination, params, true, usingPar)
+
+  override def par: Mv = Mv(hosts, source, destination, params, usingSudo, true)
+}
+
+object Mv {
+  def apply(hosts: Hosts, source: String, destination: String,
+            params: List[String] = Nil, usingSudo: Boolean = false, usingPar: Boolean = false)(implicit user: User): Mv =
+    new Mv(hosts, source, destination, params, usingSudo, usingPar)(user)
 }
 
 /**
@@ -444,4 +525,174 @@ case class StartTomcat(hosts: Hosts, usingSudo: Boolean = false,
   override def sudo: StartTomcat = this.copy(usingSudo = true)
 
   override def par: StartTomcat = this.copy(usingPar = true)
+}
+
+/**
+ * Wait task.
+ *
+ * @param d duration.
+ * @param user user.
+ */
+case class Wait(d: Duration)(implicit user: User) extends TaskM[Boolean] {
+  override def description: String = "waiting"
+
+  override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = {
+    verbose match {
+      case Verbose | Full =>
+        println(s"[ ${Console.YELLOW}*${Console.WHITE} ] $description for ${d.toString}")
+      case _ =>
+    }
+
+    val promise = Promise[Unit]
+
+    val result = try {
+      Await.ready(promise.future, d)
+      (Failure(new TaskExecutionError(Nil)), Nil, Nil)
+    } catch {
+      case t: TimeoutException => (Success(true), Nil, Nil)
+      case e: Throwable => (Failure(new TaskExecutionError(List(e.getMessage))), Nil, Nil)
+    }
+
+    verbose match {
+      case Verbose | Full => println("--------------------------------------------------------------")
+      case _ =>
+    }
+
+    result
+  }
+}
+
+/**
+ * Check url with predicate.
+ *
+ * @param hosts hosts to call over http.
+ * @param path app context.
+ * @param port app port.
+ * @param checkFun predicate on response text.
+ * @param usingPar true, if parallel ececution required.
+ * @param user user.
+ */
+case class CheckUrl(hosts: Hosts, path: String, port: Int = CheckUrl.DefaultPort,
+                    checkFun: (String => Boolean) = _ => true, usingPar: Boolean = false)(implicit user: User)
+  extends TaskM[Boolean] with UsingParallelExecution[CheckUrl] {
+
+  private val tasks: collection.immutable.Seq[TaskM[Boolean]] = hosts.hosts.map { host =>
+    new TaskM[Boolean] {
+      private def mkCommandLog(host: String, verbose: VerbosityLevel): String = verbose match {
+        case Verbose => s"check $host:$port$path"
+        case Full => s"check $host:$port$path"
+        case _ => ""
+      }
+
+      private def printCommandLog(msg: String, color: String, statusMsg: String, verbose: VerbosityLevel): Unit = verbose match {
+        case Verbose | Full =>
+          println(s"$msg [$color $statusMsg ${Console.WHITE}]")
+        case _ =>
+      }
+
+      override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = {
+        import scala.io.Source
+
+        val prot = if (host.toString().startsWith("http://")) {
+          ""
+        } else {
+          "http://"
+        }
+
+        val msg = mkCommandLog(host.toString(), verbose)
+
+        val resp = Try(Source.fromURL(s"$prot$host:$port$path"))
+        val html = resp match {
+          case Success(h) => (h.mkString, true, "")
+          case Failure(e) => ("", false, e.getMessage)
+        }
+
+        val resultSuccess = html._2 && checkFun(html._1)
+
+        if (resultSuccess) {
+          printCommandLog(msg, Console.GREEN, "ok", verbose)
+          (Success(true), Nil, Nil)
+        } else {
+          printCommandLog(msg, Console.RED, "failed", verbose)
+          (Failure(new TaskExecutionError(List("Check function failed."))), Nil, Nil)
+        }
+      }
+    }
+  }
+
+  override def description: String = "check url"
+
+  private def printTaskProgress(verbose: VerbosityLevel): Unit = verbose match {
+    case Verbose | Full =>
+      val h = if (hosts.hosts.nonEmpty) {
+        "(and " + (hosts.hosts.size - 1) + " other hosts)"
+      } else {
+        ""
+      }
+
+      val withPar = if(usingPar) {
+        s"${Console.GREEN}!!${Console.WHITE}"
+      } else {
+        ""
+      }
+
+      println(s"[ ${Console.YELLOW}*${Console.WHITE} $withPar] $description on ${hosts.hosts.head.toString()} $h")
+    case _ =>
+  }
+
+  override def run(verbose: VerbosityLevel): (Try[Boolean], List[String], List[String]) = {
+    printTaskProgress(verbose)
+
+    val tasksFold = if (usingPar) {
+      new TaskM[Boolean] {
+        override def run(verbose: VerbosityLevel = No): (Try[Boolean], List[String], List[String]) = {
+          import scala.concurrent.ExecutionContext.Implicits.global
+
+          val tasksF = tasks
+            .map(t => () => Future {
+            t.run(verbose)
+          })
+
+          val tasksFRes = Future.sequence(tasksF.map(_()))
+
+          val result = Await.result(tasksFRes, timeout)
+
+          val resultSuccess = result.map(_._1.isSuccess).forall(identity)
+
+          val resultOut = result.
+            filter(_._1.isSuccess).
+            map(_._2).
+            foldLeft(List.empty[String])((acc, out) => acc ++ out)
+
+          val resultErr = result.
+            filter(_._1.isSuccess).
+            map(_._3).
+            foldLeft(List.empty[String])((acc, err) => acc ++ err)
+
+          if (resultSuccess) {
+            (Success(true), resultOut, resultErr)
+          } else {
+            (Failure(new TaskExecutionError(resultErr)), resultOut, resultErr)
+          }
+        }
+      }
+    } else {
+      tasks.foldLeft[TaskM[Boolean]](EmptyTask)((acc, t) => acc flatMap(_ => t))
+    }
+
+    val result = tasksFold.run(verbose)
+
+    verbose match {
+      case Verbose | Full => println("--------------------------------------------------------------")
+      case _ =>
+    }
+
+    result
+  }
+
+  override def par: CheckUrl = this.copy(usingPar = true)
+}
+
+object CheckUrl {
+  final val DefaultPort = 8080
 }
