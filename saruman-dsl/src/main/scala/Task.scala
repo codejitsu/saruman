@@ -29,10 +29,6 @@ trait UsingParallelExecution[T <: UsingParallelExecution[T]] {
   def par: T
 }
 
-trait DistributedProcess {
-  val processes: Processes
-}
-
 trait TaskM[+R] extends Description {
   self =>
 
@@ -61,6 +57,49 @@ trait TaskM[+R] extends Description {
         case Failure(e) => (Failure(e), out, err)
       }
     }
+  }
+}
+
+object LoggedRun {
+  def apply[R](verbose: VerbosityLevel, usingSudo: Boolean, usingPar: Boolean,
+             hosts: Hosts, desc: String, task: TaskM[R]): (VerbosityLevel => (Try[R], List[String], List[String])) = {
+    val logRun: (VerbosityLevel => (Try[R], List[String], List[String])) = { v =>
+      verbose match {
+        case Verbose | Full =>
+          val withSudo = if(usingSudo) {
+            s"${Console.GREEN}sudo${Console.WHITE}"
+          } else {
+            ""
+          }
+
+          val withPar = if(usingPar) {
+            s"${Console.GREEN}!!${Console.WHITE}"
+          } else {
+            ""
+          }
+
+          val h = if (hosts.hosts.size > 1) {
+            " (and " + (hosts.hosts.size - 1) + " other hosts)"
+          } else {
+            ""
+          }
+
+          println(s"[ ${Console.YELLOW}*${Console.WHITE} $withSudo $withPar] $desc " +
+            s"on ${hosts.hosts.head.toString()}$h")
+        case _ =>
+      }
+
+      val result = task.run(v)
+
+      verbose match {
+        case Verbose | Full => println("--------------------------------------------------------------")
+        case _ =>
+      }
+
+      result
+    }
+
+    logRun
   }
 }
 
